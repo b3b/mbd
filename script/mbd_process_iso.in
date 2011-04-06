@@ -1,0 +1,105 @@
+#!/bin/sh
+
+wdir=${1}
+image=${2}
+mp=''
+
+prepare_include_commands(){
+    include='^\s*include\s\+'
+    menufile='\S\+'
+    path="${1}"
+    sed -n -e "
+    /${include}${menufile}\s*/I {
+        =
+        s_${include}\(${menufile}\)_{\n  r ${path}/\1\n  d \n}_I
+        p
+    }"
+}
+
+remove_newlines(){
+    step=$(for i in $(seq ${1:-1}); do echo -n 'N;'; done)
+    sed -n -e "${step}s/\n//;p"
+}
+
+find_bootloader_cfg(){
+    find "$1" -maxdepth 4 -name "isolinux.cfg" -type f -print | head -1
+}
+
+panic(){
+    [ -n "${mp}" ] && umount "${mp}"
+    echo "Error processing iso. ${1}"
+    exit 1
+}
+
+extract_menu_items(){
+    default='^\s*menu default\s*'
+    label='^\s*label\s\+'
+    default_item_file="${1}"
+    sed -n -e "
+    /^\s*\(label\|kernel\|append\)\s\+/I {
+        s_^\s*__
+        s_^\(\S\+\)\s\+_\L\1 _
+        p
+        /${label}/I {
+            s_${label}__I
+            h
+        }
+    }
+    /${default}/I {
+        x
+        /^$/ ! {
+            w ${default_item_file}
+        }
+    }"
+}
+
+extract_default_item(){
+    root="${1}"
+    menu_default="${2}\s*"
+    menu_default=${2:+$menu_default}
+    newline='\(^\|\n\)'
+    cmd='\(\S\+\)'
+    arg='\([^\n]*\)'
+    sed -n -e "
+    /^label\s${menu_default}/I {
+        n;N
+        s_${newline}${cmd}\s${arg}_\1\2='\3'_g
+        s_\(initrd=\)\(\S*\)\(.*\)_\1\2\3\n\1'\2'_
+        s_${newline}\(kernel\|initrd\)\(='\)\([^/]\)_\1\2\3/isolinux/\4_g
+        s_${newline}\(kernel\|initrd\)\(='\)_\1\2\3${root}_g
+        p;q
+    }"
+}
+
+[ -n "${image}" ] && [ -n "${wdir}" ] || panic "Bad arguments"
+if [ -f "${image}" ]
+then 
+    mp="${wdir}/image.mp"
+    mkdir -p "${mp}"
+    mount -o loop "${image}" "${mp}" || panic "Cannot mount image"
+else
+    mp="${image}"
+fi
+
+orig_cfg=$(find_bootloader_cfg  "${mp}")
+menu_dir=${orig_cfg%/*}
+[ -n "${orig_cfg}" ] || panic "Cannot find boot config"
+
+cfg="${wdir}/cfg"
+cp "${orig_cfg}" "${cfg}"
+chmod 0600 "${cfg}"
+
+includes_level=0
+while [ "${includes_level}" -lt 8  ]
+do
+    cat "${cfg}" | prepare_include_commands "${menu_dir}" | remove_newlines 4 > "${wdir}/include.sed"
+    [ 0 = ${?} ] || panic "ISO parsing error"
+    sed -i -f "${wdir}/include.sed" "${cfg}"
+    [ 0 = ${?} ] || panic "ISO parsing error"
+    includes_level=$((includes_level+1))
+done
+
+cat "${cfg}" | extract_menu_items "${wdir}/default_item" > "${wdir}/menu_items"
+[ 0 = ${?} ] || panic "ISO parsing error"
+cat "${wdir}/menu_items" | extract_default_item "${mp}" $(cat "${wdir}/default_item") > "${wdir}/boot_default"
+[ 0 = ${?} ] || panic "ISO parsing error"

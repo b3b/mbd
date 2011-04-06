@@ -1,0 +1,32 @@
+#!/bin/sh
+
+desktop_entry() {
+    cd "${1}" &&  cat > "${2}" << EOF
+[Desktop Entry] 
+Type=Link
+Name=Desktop link test
+Comment=...
+Icon=www
+URL=@desktop_link@
+EOF
+}
+
+# busybox switch_root can have '-c' option
+if [ "${1#-}" = "${1}" ]
+then 
+    newroot="${1}"
+else
+    newroot="${3}"
+fi
+
+if [ -n "@desktop_link@" ]; then
+    link_name=mbd_link.desktop
+for i in "${newroot}/home"/*;do
+    desktop_entry "${i}/Desktop" "${link_name}"
+done
+    mkdir -p "${newroot}/etc/skel/Desktop"
+    desktop_entry "${newroot}/etc/skel/Desktop" "${link_name}"
+fi
+
+[ -x "${0}.orig" ] && exec "${0}.orig" $*
+exec "@mbd_dir@/${0##*/}" $*

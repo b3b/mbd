@@ -1,0 +1,104 @@
+initrd_list = netbootcd tinycore
+initrd_dirs = $(foreach f, $(initrd_list), build/$(f).d)
+downloads_list = $(initrd_list) netbootcd_vmlinuz sed
+downloads = $(foreach f, $(downloads_list), data/$(f))
+scripts_list = @mbd_command@ @mbd_menu@ @mbd_process_iso@
+scripts = $(foreach f, $(scripts_list), $(netbootcd_dir)/usr/bin/$(f))
+initrd_scripts_list = init before_switch_root
+initrd_scripts = $(foreach f, $(initrd_scripts_list), build/mbd_initrd.d@mbd_dir@/$(f))
+netbootcd_dir = build/netbootcd.d
+tinycore_dir = build/tinycore.d
+modules = $(netbootcd_dir)/lib/modules/2.6.29.1-tinycore/kernel/fs
+
+all : $(downloads) build/sed
+	$(info Ready to install)
+
+data/%: data.urls
+	mkdir -p $(@D)
+	url=`sed -ne 's/^$* //p' data.urls` && \
+	echo "download $$url" && \
+	@downloader@ $@ $$url
+	touch $@
+
+install: mount_device mnt/@isolinux_dir@/@magic@ mnt/@isolinux_dir@/initrd.gz mnt/@isolinux_dir@/vmlinuz mnt/@isolinux_dir@/mbd_initrd.gz mnt/@isolinux_dir@/syslinux.cfg
+	sync
+	umount mnt
+	@echo 'Installation complete'
+
+mount_device: force
+	[ -b '@target_device@' ]
+	umount '@target_device@' || true
+	mkdir -p mnt
+	mount '@target_device@' mnt
+
+mnt/@isolinux_dir@/@magic@:
+	[ -b '@target_device@' ]
+	sh install_syslinux.sh
+	sync
+	mount '@target_device@' mnt
+	[ -d $(@D) ]
+	touch $@
+
+mnt/@isolinux_dir@/%.gz: build/%.gz
+	cp $< $@
+
+build/initrd.gz: $(initrd_dirs) $(scripts) $(modules) $(netbootcd_dir)/usr/bin/sed
+	cd $(netbootcd_dir) && find . | cpio --create --format='newc' | gzip -c > ../$(@F)
+
+build/mbd_initrd.gz: build/mbd_initrd.d $(initrd_scripts) 
+	cd build/mbd_initrd.d && find . | cpio --create --format='newc' | gzip -c > ../$(@F)
+
+$(netbootcd_dir)/lib/modules/%: $(tinycore_dir)/lib/modules/%
+	cp -r $< $@
+
+$(netbootcd_dir)/usr/bin/@mbd_command@: script/@mbd_command@
+	sed -ne '$$ {/^sleep 2;sudo \S\+$$/ !q 1}' $(netbootcd_dir)/etc/skel/.profile
+	sed -ie '$$ {s_netboot$$_@mbd_command@_}' $(netbootcd_dir)/etc/skel/.profile
+	cp $< $@
+	chmod +x $@
+
+$(netbootcd_dir)/usr/bin/sed: build/sed
+	cp $< $@
+	chmod +x $@
+
+$(netbootcd_dir)/usr/bin/%: script/%
+	cp $< $@
+	chmod +x $@
+
+build/mbd_initrd.d@mbd_dir@/%: script/initrd/%
+	mkdir -p $(@D)
+	cp $< $@
+	chmod +x $@
+
+build/sed: data/sed
+	[ -d $@.d ] && rm -rf ./$@.d || true
+	mkdir -p $@.d
+	tar -C $@.d -xjf $<
+	cd $@.d/sed-* && ./configure && make
+	cp $@.d/sed-*/sed/sed $@
+
+build/mbd_initrd.d: $(netbootcd_dir)
+	[ -d $@ ] && rm -rf ./$@ || true
+	mkdir -p $@@mbd_dir@
+	cp -rp $(netbootcd_dir)/dev $@@mbd_dir@/dev
+
+build/%.d: data/%
+	@[ "$$(id -u)" = "0" ] || ! echo "Need root privileges" || false
+	[ -d $@.tmp ] && rm -rf ./$@.tmp || true
+	mkdir -p $@.tmp
+	cd $@.tmp && cat ../../data/$* | gzip -cd | cpio -id
+	[ -d $@ ] && rm -rf ./$@ || true
+	mv $@.tmp $@
+
+mnt/@isolinux_dir@/vmlinuz: data/netbootcd_vmlinuz
+	cp $< $@
+
+mnt/@isolinux_dir@/syslinux.cfg: syslinux.cfg
+	cp $< $@
+
+clean:
+	[ -d 'mnt' ] && rm -rf mnt
+	[ -d 'build' ] && rm -rf build
+	[ -d 'data' ] && rm -rf data
+force: 
+.PHONY: all install need_root clean

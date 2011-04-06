@@ -1,0 +1,60 @@
+#!/bin/sh
+
+panic(){
+    echo "Boot error. ${1}"
+    echo "Press Enter to continue boot, Type abracadabra for shell"
+    read what
+    [ -n "${what}" ] && exec /bin/sh -l
+}
+
+@include_script_lib@
+
+/bin/busybox --install -s
+mkdir -p /sys
+mkdir -p /proc
+mount -t sysfs -o nodev,noexec,nosuid none /sys
+mount -t proc -o nodev,noexec,nosuid none /proc
+/bin/busybox --install -s
+mv /dev /dev.orig
+mv @mbd_dir@/dev /dev
+
+for i in 'ehci-hcd' 'ohci-hcd' 'uhci-hcd' 'usb-storage' 'ata_piix' 'sd_mod'; do 
+    modprobe ${i} 
+done
+
+[ -b /dev/@loop_dev@ ] || panic "No devices files"
+find_mount_mbd
+[ -f '@mbd_dir@/mnt/@isolinux_dir@/@magic@' ] || panic "Cannot mount \"@mbd_verbose@\" disk"
+ 
+for x in $(cat /proc/cmdline); do
+    case $x in
+        boot_image=*)
+            boot_image=${x#boot_image=}
+ 	;;
+    esac
+done
+
+if [ -x "/bin/run-init" ]; then
+    umount ${mbd_device}
+    mv ${mbd_device} @mbd_dir@/device
+    switch_root_cmd="/bin/run-init"
+    mv "${switch_root_cmd}" "${switch_root_cmd}.orig"
+    mv "@mbd_dir@/before_switch_root" "${switch_root_cmd}"
+else
+    [ -f "${boot_image}" ] || panic "No image specified"
+    losetup '/dev/@loop_dev@' "${boot_image}" || panic "Cannot mount image"
+    if [ -x "/sbin/switch_root" ]; then
+        switch_root_cmd="/sbin/switch_root"
+        cp "${switch_root_cmd}" "@mbd_dir@/${switch_root_cmd##*/}"
+        rm "${switch_root_cmd}"
+        ln -s '@mbd_dir@/before_switch_root' "${switch_root_cmd}"
+    fi
+fi
+
+mv /dev @mbd_dir@/
+mv /dev.orig /dev
+umount /sys
+umount /proc
+exec /init 
+panic "Cannot execute /init"
+exec /bin/sh -l

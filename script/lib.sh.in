@@ -1,0 +1,45 @@
+
+wait_mbd() {
+    for sing in sun is shining the weather is sweet; do
+        dev=$(blkid -l -o device -t LABEL='@mbd_label@')
+        [ 0 = ${?} ] && [ -n "${dev}" ] && return 0
+        sleep 2
+    done
+    return 1
+}
+
+find_mount_mbd() {
+    wait_mbd
+    dev=$(blkid -l -o device -t LABEL='@mbd_label@')
+    [ 0 = ${?} ] && [ -n "${dev}" ] || panic "No device with label \"@mbd_label@\""
+    err=$(modprobe vfat 2>&1)
+    mkdir -p '@mbd_dir@/mnt'
+    err=$(mount -t vfat "${dev}" '@mbd_dir@/mnt') || panic "Cannot mount ${dev} : \"${err}\""
+    [ -f '@mbd_dir@/mnt/@isolinux_dir@/@magic@' ] || panic "Cannot find \"@mbd_verbose@\" installation"
+    mbd_device=${dev}
+}
+
+tune_command_line() {
+    image="@mbd_dir@/mnt/@images_dir@/${1}"
+    sed -e "
+    s|root=\S*||
+    s|\(boot=live\)|\1 fromiso=@mbd_dir@/device/@images_dir@/${1}|
+    s|\(boot=casper\)|\1 iso-scan/filename=/@images_dir@/${1}|
+    s|^|rdinit=@mbd_dir@/init boot_image=${image} root=live:/dev/@loop_dev@ cdroot=/dev/@loop_dev@ bootfrom=/dev/@loop_dev@ |
+    "
+}
+
+kexec_load() {    
+    wdir="${1}"; kernel="${2}"; append="${3}"; initrd="${4}"; mbd_initrd="${5}"; image="${6}"
+    [ -n "${kernel}" ] && [ -n "${append}" ] || panic "Bad boot arguments"
+    if [ -n "${initrd}" ] &&  [ -n "${mbd_initrd}" ]; then
+	cat "${initrd}" "${mbd_initrd}" >> "${wdir}/mbd_combined_initrd"
+	initrd="${wdir}/mbd_combined_initrd"
+        append="$(echo ${append} | tune_command_line ${image})"
+    fi
+    if [ -n "${initrd}" ];then
+	initrd="--initrd=${initrd}"
+    fi
+    kexec --load "${kernel}" --command-line="${append}" "${initrd}"
+    sync
+}

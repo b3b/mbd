@@ -1,0 +1,21 @@
+#!/bin/sh
+
+panic() {
+    umount '@mbd_dir@/mnt'
+    dialog --backtitle "@mbd_verbose@" --msgbox "Error: \"${1}\"\n\nSwitching to NetbootCD" 20 70
+    exec /usr/bin/netboot
+    dialog --backtitle "@mbd_verbose@" --msgbox "Failed to run NetbootCD script. Exit to shell"  20 70
+    exit 1
+}
+
+@include_script_lib@
+
+if [ $(whoami) != "root" ];then
+	exec sudo $0 $*
+fi
+
+[ -f '@mbd_dir@/mnt/@isolinux_dir@/@magic@' ] || find_mount_mbd
+[ -f '@mbd_dir@/mnt/@isolinux_dir@/@magic@' ] || panic "Cannot mount \"@mbd_verbose@\" disk"
+
+exec @mbd_menu@
+panic "Cannot run \"@mbd_menu@\" script"
