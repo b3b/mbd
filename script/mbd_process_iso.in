@@ -55,8 +55,9 @@ extract_menu_items(){
 
 extract_default_item(){
     root="${1}"
-    menu_default="${2}\s*"
-    menu_default=${2:+$menu_default}
+    menu_dir="${2}"
+    menu_default="${3}\s*"
+    menu_default=${3:+$menu_default}
     newline='\(^\|\n\)'
     cmd='\(\S\+\)'
     arg='\([^\n]*\)'
@@ -65,8 +66,8 @@ extract_default_item(){
         n;N
         s_${newline}${cmd}\s${arg}_\1\2='\3'_g
         s_\(initrd=\)\(\S*\)\(.*\)_\1\2\3\n\1'\2'_
-        s_${newline}\(kernel\|initrd\)\(='\)\([^/]\)_\1\2\3/isolinux/\4_g
-        s_${newline}\(kernel\|initrd\)\(='\)_\1\2\3${root}_g
+        s_${newline}\(kernel\|initrd\)\(='[/]\)_\1\2\3${root}/_g
+        s_${newline}\(kernel\|initrd\)\(='\)\([^/]\)_\1\2\3/${menu_dir}/\4_g
         p;q
     }"
 }
@@ -101,5 +102,5 @@ done
 
 cat "${cfg}" | extract_menu_items "${wdir}/default_item" > "${wdir}/menu_items"
 [ 0 = ${?} ] || panic "ISO parsing error"
-cat "${wdir}/menu_items" | extract_default_item "${mp}" $(cat "${wdir}/default_item") > "${wdir}/boot_default"
+cat "${wdir}/menu_items" | extract_default_item "${mp}" "${menu_dir}" $(cat "${wdir}/default_item") > "${wdir}/boot_default"
 [ 0 = ${?} ] || panic "ISO parsing error"
