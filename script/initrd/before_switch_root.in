@@ -28,5 +28,6 @@ done
     desktop_entry "${newroot}/etc/skel/Desktop" "${link_name}"
 fi
 
+cd /
 [ -x "${0}.orig" ] && exec "${0}.orig" $*
 exec "@mbd_dir@/${0##*/}" $*

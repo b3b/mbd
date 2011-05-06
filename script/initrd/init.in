@@ -31,6 +31,9 @@ for x in $(cat /proc/cmdline); do
         boot_image=*)
             boot_image=${x#boot_image=}
  	;;
+        initrd=*)
+            initrd=${x##*/}
+        ;;
     esac
 done
 
@@ -41,8 +44,12 @@ if [ -x "/bin/run-init" ]; then
     mv "${switch_root_cmd}" "${switch_root_cmd}.orig"
     mv "@mbd_dir@/before_switch_root" "${switch_root_cmd}"
 else
-    [ -f "${boot_image}" ] || panic "No image specified"
-    losetup '/dev/@loop_dev@' "${boot_image}" || panic "Cannot mount image"
+    if [ "x_${initrd}" = "x_rootfs.gz" ]; then
+        umount ${mbd_device}
+    else
+        [ -f "${boot_image}" ] || panic "No image specified"
+        losetup '/dev/@loop_dev@' "${boot_image}" || panic "Cannot mount image"
+    fi
     if [ -x "/sbin/switch_root" ]; then
         switch_root_cmd="/sbin/switch_root"
         cp "${switch_root_cmd}" "@mbd_dir@/${switch_root_cmd##*/}"
