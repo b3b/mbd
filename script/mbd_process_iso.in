@@ -5,13 +5,15 @@ image=${2}
 mp=''
 
 prepare_include_commands(){
+    root="${1}"
+    menu_dir="${2}"
     include='^\s*include\s\+'
     menufile='\S\+'
-    path="${1}"
     sed -n -e "
     /${include}${menufile}\s*/I {
         =
-        s_${include}\(${menufile}\)_{\n  r ${path}/\1\n  d \n}_I
+        s_${include}\([/]${menufile}\)_{\n  r ${root}\1\n  d \n}_I
+        s_${include}\([^/]${menufile}\)_{\n  r ${menu_dir}/\1\n  d \n}_I
         p
     }"
 }
@@ -93,7 +95,7 @@ chmod 0600 "${cfg}"
 includes_level=0
 while [ "${includes_level}" -lt 8  ]
 do
-    cat "${cfg}" | prepare_include_commands "${menu_dir}" | remove_newlines 4 > "${wdir}/include.sed"
+    cat "${cfg}" | prepare_include_commands "${mp}" "${menu_dir}" | remove_newlines 4 > "${wdir}/include.sed"
     [ 0 = ${?} ] || panic "ISO parsing error"
     sed -i -f "${wdir}/include.sed" "${cfg}"
     [ 0 = ${?} ] || panic "ISO parsing error"
