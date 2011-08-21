@@ -9,6 +9,7 @@ panic(){
 
 @include_script_lib@
 
+PATH="${PATH}:/sbin:/usr/sbin:/bin:/usr/bin"
 /bin/busybox --install -s
 mkdir -p /sys
 mkdir -p /proc
@@ -64,4 +65,4 @@ umount /sys
 umount /proc
 exec /init 
 panic "Cannot execute /init"
-exec /bin/sh -l
+exec /bin/sh
