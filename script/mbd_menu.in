@@ -1,92 +1,97 @@
 #!/bin/sh
 
+@include_script_lib@
+@include_dialog_lib@
+
+usage() {
+    cat << EOF
+usage: $0 [-y] [-t dir] [-i initrd] [dir]
+-y        :  do not ask for confirmation
+-t dir    :  directory to store temporary files
+-i initrd :  initrd to inject
+dir       :  directory for processing
+EOF
+}
+
 exit_to_shell() {
-    echo "Type \"@mbd_command@\" to return to the \"@mbd_verbose@\" menu."
     exit 0
 }
 
 panic() {
-    echo "${1}"
+    show error_msg "${msg}"
+    echo "${1}" >&2
     exit_to_shell
-}
-
-@include_script_lib@
-
-netbootcd() {
-    if [ -x /tmp/nbscript.sh ];then
-	/tmp/nbscript.sh
-    else
-	/usr/bin/nbscript.sh
-    fi
-}
-
-show() {    
-    choose=''
-    what=${1}; shift
-    arg=$(echo "$*" | sed -e "s_'__g")
-    exec 3>&1
-    choose=$(${what} "${arg}" | xargs dialog 2>&1 1>&3)
-    err=$?
-    exec 3>&-
-    return ${err}
-}
-
-error_msg() {
-    echo "--backtitle \"@mbd_verbose@\" --msgbox '${1}' 20 70"
-}
-
-dialog_menu() {
-    echo "--backtitle \"@mbd_verbose@\" --menu '${1}' 20 70 13"
-}
-
-main_menu() {
-    dialog_menu "What would you like to do?"
-    echo "'Live' 'Boot image'"
-    echo "'NetbootCD' 'Run NetbootCD script'"
 }
 
 images_menu() {
     dialog_menu "What would you like to boot?"
-    for image in '@mbd_dir@/mnt/@images_dir@/'*.iso; do
+    for image in "${images_dir}/"*.iso; do
         image="${image##*/}"; image="${image%.iso}"
         echo "'${image}' ''"
     done
 }
 
+kexec_to() {
+    choose="${1}"
+    . "${tmp_dir}/boot_default"
+    err=$(kexec_load "${tmp_dir}" "${kernel}" "${append}" "${initrd}" "${mbd_initrd}" "${choose}.iso" 2>&1)
+    if [ ${?} -eq 0 ]; then
+        sync
+        umount -a
+        mount -o remount,ro /
+        kexec -e
+    fi
+    echo "kexec fail. ${err}"
+}
+
+parse_args() {
+    while getopts ':t:i:y' opt; do
+        case ${opt} in
+            t)
+                tmp_dir="${OPTARG}"
+                ;;
+            i)
+                mbd_initrd="${OPTARG}"
+                ;;
+            y)
+                yes_mode=1
+                ;;
+            \?|:)
+                return 1
+                ;;
+        esac        
+    done
+    shift $((OPTIND-1)); OPTIND=1
+    images_dir="$*"
+}
+
+parse_args "$@" || ! usage || exit_to_shell
+tmp_dir="${tmp_dir:-@tmp_dir@}"
+mbd_initrd="${mbd_initrd:-./mbd_initrd.gz}"
+images_dir="${images_dir:-./iso}"
+if [ -z "$(ls ${images_dir}/*.iso)" ]; then
+    msg="No ISO images found"
+    panic "${msg}"
+fi
+
 choose=''
-while [ -z "${choose}" ];do
-    show main_menu
-    case "${choose}" in
-        Live)
-	    if [ -n "$(ls '@mbd_dir@/mnt/@images_dir@/'*.iso)" ]; then
-		show images_menu
-	    else
-		show error_msg "No ISO images found"
-		choose=''
+while [ -z "${choose}" ]; do
+    show images_menu
+    if [ ${?} -eq 0 ] && [ -n "${choose}" ]; then
+        image="${images_dir}/${choose}.iso"
+        [ -x './@mbd_process_iso@' ] && cmd='./@mbd_process_iso@' || cmd='@mbd_process_iso@'
+        err=$("${cmd}" "${tmp_dir}" "${image}" 2>&1)
+        if [ ${?} -eq 0 ]; then
+            ask_confirmation 'The system will reboot (or crash). Continue?'
+            if [ ${?} -eq 0 ]; then
+                err=$(kexec_to "${choose}" 2>&1)
             fi
-            if [ 0 = ${?} ] && [ -n "${choose}" ]; then
-                image="@mbd_dir@/mnt/@images_dir@/${choose}.iso"
-                err=$(@mbd_process_iso@ '@mbd_dir@' "${image}" 2>&1)
-                if [ 0 = ${?} ]; then
-		    . @mbd_dir@/boot_default
-                    err=$(kexec_load '@mbd_dir@' "${kernel}" "${append}" "${initrd}" '@mbd_dir@/mnt/@isolinux_dir@/mbd_initrd.gz' "${choose}.iso" 2>&1)
-                    if [ 0  = ${?} ]; then
-                        kexec -e
-                        err="Failed to kexec. ${err}"
-                    fi
-                fi
-                if [ -n "${err}" ];then
-                    show error_msg "${err}"
-                fi
-                choose=''
-            else
-                choose=''
-            fi            
-            ;;
-        NetbootCD) 
-	    netbootcd
-	    choose=''
-            ;;
-        *)exit_to_shell;;
-    esac
+        fi
+        if [ -n "${err}" ]; then
+            show error_msg "${err}"
+        fi
+        choose=''
+    else
+       exit_to_shell
+    fi
 done

@@ -1,7 +1,7 @@
 AC_INIT([mbd], [0.0])
 
 AC_DEFUN(program_exist, [[program_exist]]_$1)
-m4_foreach([pname], [[tar], [cpio], [readlink], [syslinux], [mlabel]],
+m4_foreach([pname], [[tar], [cpio], [readlink], [install], [syslinux], [mlabel]],
 [
         AC_CHECK_PROG(program_exist(pname), [pname], [pname], [no])
         if test "${program_exist(pname)}" = "no" ; then
@@ -30,7 +30,7 @@ AC_DEFUN([_isolinux_dir], [isolinux])
 AC_DEFUN([magic_number], [2128506])
 AC_SUBST([mbd_verbose], ['Multi Boot Disk Test, AC_PACKAGE_VERSION'])
 AC_SUBST([magic], [magic_number])
-AC_SUBST([mbd_label], ['MLUGMBOOT'])
+AC_SUBST([mbd_label], ['MBOOTDISK'])
 AC_SUBST([mbd_dir], ['/mbd'])
 AC_SUBST([isolinux_dir], ['_isolinux_dir'])
 AC_SUBST([images_dir], ['_isolinux_dir/iso'])
@@ -39,14 +39,19 @@ AC_SUBST([loop_dev], ['loop16'])
 AC_SUBST([mbd_command], ['mbd'])
 AC_SUBST([mbd_menu], ['mbd_menu'])
 AC_SUBST([mbd_process_iso], ['mbd_process_iso'])
+AC_SUBST([tmp_dir], [/tmp/mbd])
 
 AC_ARG_VAR([target_device], [target partition device file (like "/dev/some-device")])
-if test x_"${target_device}" = "x_"; then AC_MSG_ERROR([No target device specified, run like "./configure target_device=/dev/some-device"]); fi
 AC_ARG_VAR([desktop_link], [create Desktop link to the specified location])
+if test x_"${target_device}" = "x_"; then 
+   AC_MSG_ERROR([No target device specified, run like "./configure target_device=/dev/some-device"])
+fi
 
 include_script_lib=script/lib.sh
+include_dialog_lib=script/dialog.sh
 AC_SUBST_FILE(include_script_lib)
+AC_SUBST_FILE(include_dialog_lib)
 
-AC_CONFIG_FILES([Makefile install_syslinux.sh script/lib.sh script/mbd script/mbd_menu script/mbd_process_iso script/initrd/init script/initrd/before_switch_root])
+AC_CONFIG_FILES([Makefile install_syslinux.sh script/lib.sh script/dialog.sh script/mbd script/mbd_menu script/mbd_process_iso script/initrd/init script/initrd/before_switch_root])
 AC_OUTPUT
 AC_MSG_NOTICE([Ready to make])

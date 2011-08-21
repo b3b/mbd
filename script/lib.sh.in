@@ -1,38 +1,44 @@
 
 wait_mbd() {
-    for sing in sun is shining the weather is sweet; do
+    for sun in shining the weather is sweet; do
         dev=$(blkid -l -o device -t LABEL='@mbd_label@')
-        [ 0 = ${?} ] && [ -n "${dev}" ] && return 0
+        [ ${?} -eq 0 ] && [ -n "${dev}" ] && return 0
         sleep 2
     done
     return 1
 }
 
 find_mount_mbd() {
+    local mount_point="${1}"
     wait_mbd
-    dev=$(blkid -l -o device -t LABEL='@mbd_label@')
-    [ 0 = ${?} ] && [ -n "${dev}" ] || panic "No device with label \"@mbd_label@\""
-    err=$(modprobe vfat 2>&1)
-    mkdir -p '@mbd_dir@/mnt'
-    err=$(mount -t vfat "${dev}" '@mbd_dir@/mnt') || panic "Cannot mount ${dev} : \"${err}\""
-    [ -f '@mbd_dir@/mnt/@isolinux_dir@/@magic@' ] || panic "Cannot find \"@mbd_verbose@\" installation"
+    local dev=$(blkid -l -o device -t LABEL='@mbd_label@')
+    [ ${?} -eq 0 ] && [ -n "${dev}" ] || panic "No device with label \"@mbd_label@\""
+    local err=$(modprobe vfat 2>&1)
+    mkdir -p "${mount_point}"
+    local err=$(mount -t vfat "${dev}" "${mount_point}") || panic "Cannot mount ${dev} : \"${err}\""
+    [ -f "${mount_point}/@isolinux_dir@/@magic@" ] || panic "Cannot find \"@mbd_verbose@\" installation"
     mbd_device=${dev}
 }
 
 tune_command_line() {
-    image="@mbd_dir@/mnt/@images_dir@/${1}"
+    local image="@mbd_dir@/mnt/@images_dir@/${1}"
     sed -e "
     s|root=\S*||
+    s|--||
     s|\(boot=live\)|\1 fromiso=@mbd_dir@/device/@images_dir@/${1}|
     s|\(boot=casper\)|\1 iso-scan/filename=/@images_dir@/${1}|
     s|^|rdinit=@mbd_dir@/init boot_image=${image} root=live:/dev/@loop_dev@ cdroot=/dev/@loop_dev@ bootfrom=/dev/@loop_dev@ |
     "
 }
 
-kexec_load() {    
-    wdir="${1}"; kernel="${2}"; append="${3}"; initrd="${4}"; mbd_initrd="${5}"; image="${6}"
-    [ -n "${kernel}" ] && [ -n "${append}" ] || panic "Bad boot arguments"
+kexec_load() {
+    local wdir="${1}"; local kernel="${2}"; local append="${3}"
+    local initrd="${4}"; local mbd_initrd="${5}"; local image="${6}"
+    [ -n "${kernel}" ] && [ -n "${append}" ] || { echo "Bad boot arguments"; return 1; }
+    [ -f "${kernel}" ] || { echo "Cannot open \"${kernel}\""; return 1; }
     if [ -n "${initrd}" ] &&  [ -n "${mbd_initrd}" ]; then
+        [ -f "${initrd}" ] || { echo "Cannot open \"${initrd}\""; return 1; }
+        [ -f "${mbd_initrd}" ] || { echo "Cannot open \"${mbd_initrd}\""; return 1; }
 	cat "${initrd}" "${mbd_initrd}" >> "${wdir}/mbd_combined_initrd"
 	initrd="${wdir}/mbd_combined_initrd"
         append="$(echo ${append} | tune_command_line ${image})"

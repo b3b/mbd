@@ -5,10 +5,10 @@ image=${2}
 mp=''
 
 prepare_include_commands(){
-    root="${1}"
-    menu_dir="${2}"
-    include='^\s*include\s\+'
-    menufile='\S\+'
+    local root="${1}"
+    local menu_dir="${2}"
+    local include='^\s*include\s\+'
+    local menufile='\S\+'
     sed -n -e "
     /${include}${menufile}\s*/I {
         =
@@ -19,7 +19,7 @@ prepare_include_commands(){
 }
 
 remove_newlines(){
-    step=$(for i in $(seq ${1:-1}); do echo -n 'N;'; done)
+    local step=$(for i in $(seq ${1:-1}); do echo -n 'N;'; done)
     sed -n -e "${step}s/\n//;p"
 }
 
@@ -34,9 +34,9 @@ panic(){
 }
 
 extract_menu_items(){
-    default='^\s*menu default\s*'
-    label='^\s*label\s\+'
-    default_item_file="${1}"
+    local default='^\s*menu default\s*'
+    local label='^\s*label\s\+'
+    local default_item_file="${1}"
     sed -n -e "
     /^\s*\(label\|kernel\|append\)\s\+/I {
         s_^\s*__
@@ -79,6 +79,7 @@ if [ -f "${image}" ]
 then 
     mp="${wdir}/image.mp"
     mkdir -p "${mp}"
+    umount "${mp}" 2>/dev/null
     mount -o loop "${image}" "${mp}" || panic "Cannot mount image"
 else
     mp="${image}"
@@ -96,13 +97,13 @@ includes_level=0
 while [ "${includes_level}" -lt 8  ]
 do
     cat "${cfg}" | prepare_include_commands "${mp}" "${menu_dir}" | remove_newlines 4 > "${wdir}/include.sed"
-    [ 0 = ${?} ] || panic "ISO parsing error"
+    [ ${?} -eq 0 ] || panic "ISO parsing error"
     sed -i -f "${wdir}/include.sed" "${cfg}"
-    [ 0 = ${?} ] || panic "ISO parsing error"
+    [ ${?} -eq 0 ] || panic "ISO parsing error"
     includes_level=$((includes_level+1))
 done
 
 cat "${cfg}" | extract_menu_items "${wdir}/default_item" > "${wdir}/menu_items"
-[ 0 = ${?} ] || panic "ISO parsing error"
+[ ${?} -eq 0 ] || panic "ISO parsing error"
 cat "${wdir}/menu_items" | extract_default_item "${mp}" "${menu_dir}" $(cat "${wdir}/default_item") > "${wdir}/boot_default"
-[ 0 = ${?} ] || panic "ISO parsing error"
+[ ${?} -eq 0 ] || panic "ISO parsing error"

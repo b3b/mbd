@@ -4,7 +4,7 @@ panic(){
     echo "Boot error. ${1}"
     echo "Press Enter to continue boot, Type abracadabra for shell"
     read what
-    [ -n "${what}" ] && exec /bin/sh -l
+    [ -n "${what}" ] && exec /bin/sh
 }
 
 @include_script_lib@
@@ -23,7 +23,7 @@ for i in 'ehci-hcd' 'ohci-hcd' 'uhci-hcd' 'usb-storage' 'ata_piix' 'sd_mod'; do
 done
 
 [ -b /dev/@loop_dev@ ] || panic "No devices files"
-find_mount_mbd
+find_mount_mbd '@mbd_dir@/mnt'
 [ -f '@mbd_dir@/mnt/@isolinux_dir@/@magic@' ] || panic "Cannot mount \"@mbd_verbose@\" disk"
  
 for x in $(cat /proc/cmdline); do

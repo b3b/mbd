@@ -1,17 +1,26 @@
+netbootcd_dir = build/netbootcd.d
+tinycore_dir = build/tinycore.d
+install_dir = mnt/@isolinux_dir@
 initrd_list = netbootcd tinycore
 initrd_dirs = $(foreach f, $(initrd_list), build/$(f).d)
 downloads_list = $(initrd_list) netbootcd_vmlinuz sed
 downloads = $(foreach f, $(downloads_list), data/$(f))
-scripts_list = @mbd_command@ @mbd_menu@ @mbd_process_iso@
+standalone_scripts_list = @mbd_menu@ @mbd_process_iso@
+scripts_list = $(standalone_scripts_list) @mbd_command@
+standalone_scripts = $(foreach f, $(standalone_scripts_list), ${install_dir}/$(f))
 scripts = $(foreach f, $(scripts_list), $(netbootcd_dir)/usr/bin/$(f))
 initrd_scripts_list = init before_switch_root
 initrd_scripts = $(foreach f, $(initrd_scripts_list), build/mbd_initrd.d@mbd_dir@/$(f))
-netbootcd_dir = build/netbootcd.d
-tinycore_dir = build/tinycore.d
+uninstall_list = $(standalone_scripts_list) syslinux.cfg ldlinux.sys vmlinuz initrd.gz mbd_initrd.gz @magic@
 modules = $(netbootcd_dir)/lib/modules/2.6.29.1-tinycore/kernel/fs
 
-all : $(downloads) build/sed
-	$(info Ready to install)
+all: $(downloads) build/sed
+	@echo 'Ready to install'
+
+install: mount_device $(install_dir)/@magic@ $(install_dir)/initrd.gz $(install_dir)/vmlinuz $(install_dir)/mbd_initrd.gz $(install_dir)/syslinux.cfg ${standalone_scripts}
+	sync
+	umount mnt
+	@echo 'Installation complete'
 
 data/%: data.urls
 	mkdir -p $(@D)
@@ -20,18 +29,13 @@ data/%: data.urls
 	@downloader@ $@ $$url
 	touch $@
 
-install: mount_device mnt/@isolinux_dir@/@magic@ mnt/@isolinux_dir@/initrd.gz mnt/@isolinux_dir@/vmlinuz mnt/@isolinux_dir@/mbd_initrd.gz mnt/@isolinux_dir@/syslinux.cfg
-	sync
-	umount mnt
-	@echo 'Installation complete'
-
 mount_device: force
 	[ -b '@target_device@' ]
 	umount '@target_device@' || true
 	mkdir -p mnt
 	mount '@target_device@' mnt
 
-mnt/@isolinux_dir@/@magic@:
+$(install_dir)/@magic@:
 	[ -b '@target_device@' ]
 	sh install_syslinux.sh
 	sync
@@ -39,7 +43,13 @@ mnt/@isolinux_dir@/@magic@:
 	[ -d $(@D) ]
 	touch $@
 
-mnt/@isolinux_dir@/%.gz: build/%.gz
+$(install_dir)/@mbd_menu@: script/@mbd_menu@
+	install -m500 $< $@
+
+$(install_dir)/@mbd_process_iso@: script/@mbd_process_iso@
+	install -m500 $< $@
+
+$(install_dir)/%.gz: build/%.gz
 	cp $< $@
 
 build/initrd.gz: $(initrd_dirs) $(scripts) $(modules) $(netbootcd_dir)/usr/bin/sed
@@ -71,34 +81,46 @@ build/mbd_initrd.d@mbd_dir@/%: script/initrd/%
 	chmod +x $@
 
 build/sed: data/sed
-	[ -d $@.d ] && rm -rf ./$@.d || true
+	! [ -d $@.d ] || rm -rf ./$@.d
 	mkdir -p $@.d
 	tar -C $@.d -xjf $<
 	cd $@.d/sed-* && ./configure && make
 	cp $@.d/sed-*/sed/sed $@
 
 build/mbd_initrd.d: $(netbootcd_dir)
-	[ -d $@ ] && rm -rf ./$@ || true
+	! [ -d $@ ] || rm -rf ./$@
 	mkdir -p $@@mbd_dir@
 	cp -rp $(netbootcd_dir)/dev $@@mbd_dir@/dev
 
 build/%.d: data/%
-	@[ "$$(id -u)" = "0" ] || ! echo "Need root privileges" || false
-	[ -d $@.tmp ] && rm -rf ./$@.tmp || true
-	mkdir -p $@.tmp
-	cd $@.tmp && cat ../../data/$* | gzip -cd | cpio -id
-	[ -d $@ ] && rm -rf ./$@ || true
-	mv $@.tmp $@
+	@[ "$$(id -u)" = "0" ] || { echo "Need root privileges" || false; }
+	! [ -d "./$@.tmp" ] || rm -rf "./$@.tmp"
+	mkdir -p "./$@.tmp"
+	cd "./$@.tmp" && cat "../../data/$*" | gzip -cd | cpio -id --no-absolute-filenames
+	! [ -d "./$@" ] || rm -rf "./$@"
+	mv "./$@.tmp" "./$@"
 
-mnt/@isolinux_dir@/vmlinuz: data/netbootcd_vmlinuz
+$(install_dir)/vmlinuz: data/netbootcd_vmlinuz
 	cp $< $@
 
-mnt/@isolinux_dir@/syslinux.cfg: syslinux.cfg
+$(install_dir)/syslinux.cfg: syslinux.cfg
 	cp $< $@
 
 clean:
-	[ -d 'mnt' ] && rm -rf mnt
-	[ -d 'build' ] && rm -rf build
-	[ -d 'data' ] && rm -rf data
+	[ -d 'mnt' ] && umount 'mnt' || true
+	! [ -d 'mnt' ] || ! [ "$$(ls -A mnt)" ]
+	! [ -d 'mnt' ] || rm -rf mnt
+	! [ -d 'build' ] || rm -rf build
+	! [ -d 'data' ] || rm -rf data
+
+uninstall: mount_device
+	[ -f "$(install_dir)/@magic@" ] || { echo "Not installed - no magic"; umount mnt; false; }
+	{ for i in $(uninstall_list); do rm "$(install_dir)/$$i"; done; }
+	[ "$$(ls -A mnt/@images_dir@)" ] || { rm -r "mnt/@images_dir@" && \
+	{ [ "$$(ls -A $(install_dir))" ] || rm -r "$(install_dir)"; }; }
+	sync
+	umount mnt
+	@echo 'Uninstalled'
+
 force: 
-.PHONY: all install need_root clean
+.PHONY: all install need_root uninstall clean

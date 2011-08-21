@@ -1,21 +1,57 @@
 #!/bin/sh
 
-panic() {
-    umount '@mbd_dir@/mnt'
-    dialog --backtitle "@mbd_verbose@" --msgbox "Error: \"${1}\"\n\nSwitching to NetbootCD" 20 70
-    exec /usr/bin/netboot
-    dialog --backtitle "@mbd_verbose@" --msgbox "Failed to run NetbootCD script. Exit to shell"  20 70
-    exit 1
+@include_script_lib@
+@include_dialog_lib@
+
+exit_to_shell() {
+    echo "Type \"@mbd_command@\" to return to the \"@mbd_verbose@\" menu."
+    exit 0
 }
 
-@include_script_lib@
+panic() {
+    umount '@mbd_dir@/mnt'
+    show error_msg "${msg}"
+    echo "${1}" >&2
+    exit_to_shell
+}
+
+netbootcd() {
+    if [ -x /tmp/nbscript.sh ];then
+	/tmp/nbscript.sh
+    else
+	/usr/bin/nbscript.sh
+    fi
+}
+
+main_menu() {
+    dialog_menu "What would you like to do?"
+    echo "'Live' 'Boot image'"
+    echo "'NetbootCD' 'Run NetbootCD script'"
+}
 
 if [ $(whoami) != "root" ];then
 	exec sudo $0 $*
 fi
 
-[ -f '@mbd_dir@/mnt/@isolinux_dir@/@magic@' ] || find_mount_mbd
-[ -f '@mbd_dir@/mnt/@isolinux_dir@/@magic@' ] || panic "Cannot mount \"@mbd_verbose@\" disk"
+[ -f '@tmp_dir@/mnt/@isolinux_dir@/@magic@' ] || find_mount_mbd '@tmp_dir@/mnt'
+[ -f '@tmp_dir@/mnt/@isolinux_dir@/@magic@' ] || panic "Cannot mount \"@mbd_verbose@\" disk"
 
-exec @mbd_menu@
-panic "Cannot run \"@mbd_menu@\" script"
+choose=''
+while [ -z "${choose}" ];do
+    show main_menu
+    case "${choose}" in
+        Live)            
+            @mbd_menu@ -y -t '@tmp_dir@' \
+                -i '@tmp_dir@/mnt/@isolinux_dir@/mbd_initrd.gz' \
+                '@tmp_dir@/mnt/@images_dir@'
+	    choose=''
+            ;;
+        NetbootCD) 
+	    netbootcd
+	    choose=''
+            ;;
+        *)
+            exit_to_shell
+            ;;
+    esac
+done
