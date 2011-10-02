@@ -49,9 +49,11 @@ fi
 
 include_script_lib=script/lib.sh
 include_dialog_lib=script/dialog.sh
+include_isolinux_lib=script/isolinux.sh
 AC_SUBST_FILE(include_script_lib)
 AC_SUBST_FILE(include_dialog_lib)
+AC_SUBST_FILE(include_isolinux_lib)
 
-AC_CONFIG_FILES([Makefile install_syslinux.sh script/lib.sh script/dialog.sh script/mbd script/mbd_menu script/mbd_process_iso script/initrd/init script/initrd/before_switch_root])
+AC_CONFIG_FILES([Makefile install_syslinux.sh script/lib.sh script/dialog.sh script/isolinux.sh script/mbd script/mbd_menu script/mbd_process_iso script/initrd/init script/initrd/before_switch_root])
 AC_OUTPUT
 AC_MSG_NOTICE([Ready to make])

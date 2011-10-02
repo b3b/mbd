@@ -1,0 +1,19 @@
+isolinux_extract_entry() {
+    local root="${1}"
+    local label="${2}\s*" ; label=${2:+$label}
+    local newline='\(^\|\n\)'
+    local cmd='\(\S\+\)'
+    local arg='\([^\n]*\)'
+    sed -n -e "
+    /^label\s\+${label}/I {
+        n;N
+        s;${newline}${cmd}\s*${arg};\1\2='\3';g
+        s;\(initrd=\)\(\S*\)\(.*\);\1\2\3\n\1'\2';
+        s;${newline}\(kernel\|initrd\)\(='\)[/];\1\2\3${root}/;g
+        p;q
+    }"
+}
+
+isolinux_labels_list() {
+    sed -n -e "s_^label\s\+\(\S\+\)_\1_pIg"
+}

@@ -12,8 +12,8 @@ prepare_include_commands(){
     sed -n -e "
     /${include}${menufile}\s*/I {
         =
-        s_${include}\([/]${menufile}\)_{\n  r ${root}\1\n  d \n}_I
-        s_${include}\([^/]${menufile}\)_{\n  r ${menu_dir}/\1\n  d \n}_I
+        s|\(${include}\)\([^/]\)|\1/${menu_dir}/\2|I
+        s|${include}\([/]${menufile}\)|{\n  r ${root}\1\n  d \n}|I
         p
     }"
 }
@@ -24,11 +24,12 @@ remove_newlines(){
 }
 
 find_bootloader_cfg(){
-    find "$1" -maxdepth 4 -name "isolinux.cfg" -type f -print | head -1
+    local dir=$(readlink -f "${1}")
+    local cfg=$(find "$dir" -maxdepth 4 -name "isolinux.cfg" -type f | head -1)
+    echo "${cfg#${dir}}"
 }
 
 panic(){
-    [ -n "${mp}" ] && umount "${mp}"
     echo "Error processing iso. ${1}"
     exit 1
 }
@@ -36,14 +37,21 @@ panic(){
 extract_menu_items(){
     local default='^\s*menu default\s*'
     local label='^\s*label\s\+'
+    local kernel='^\(\s*kernel\s\+\)'
+    local append='^\s*append\s\+'
     local default_item_file="${1}"
+    local menu_dir="${2}"
     sed -n -e "
     /^\s*\(label\|kernel\|append\)\s\+/I {
         s_^\s*__
         s_^\(\S\+\)\s\+_\L\1 _
+        s|${kernel}\([^/]\)|\1/${menu_dir}/\2|I
+        /${append}/ I{
+          s|\(initrd=\)\([^/]\)|\1/${menu_dir}/\2|I
+        }
         p
         /${label}/I {
-            s_${label}__I
+            s|${label}||I
             h
         }
     }
@@ -55,55 +63,40 @@ extract_menu_items(){
     }"
 }
 
-extract_default_item(){
-    root="${1}"
-    menu_dir="${2}"
-    menu_default="${3}\s*"
-    menu_default=${3:+$menu_default}
-    newline='\(^\|\n\)'
-    cmd='\(\S\+\)'
-    arg='\([^\n]*\)'
-    sed -n -e "
-    /^label\s${menu_default}/I {
-        n;N
-        s_${newline}${cmd}\s${arg}_\1\2='\3'_g
-        s_\(initrd=\)\(\S*\)\(.*\)_\1\2\3\n\1'\2'_
-        s_${newline}\(kernel\|initrd\)\(='[/]\)_\1\2\3${root}/_g
-        s_${newline}\(kernel\|initrd\)\(='\)\([^/]\)_\1\2\3/${menu_dir}/\4_g
-        p;q
-    }"
-}
-
 [ -n "${image}" ] && [ -n "${wdir}" ] || panic "Bad arguments"
+mkdir -p "${wdir}"
+[ -d "${wdir}" ] || panic "Bad temporary directory"
 if [ -f "${image}" ]
 then 
-    mp="${wdir}/image.mp"
-    mkdir -p "${mp}"
-    umount "${mp}" 2>/dev/null
-    mount -o loop "${image}" "${mp}" || panic "Cannot mount image"
+    mp="${wdir}/mp"
+    if ! [ -d "${mp}" ]; then
+        mkdir -p "${mp}" 
+        mount -o loop "${image}" "${mp}" || panic "Cannot mount image"
+    fi
 else
     mp="${image}"
 fi
+mp=$(readlink -f "${mp}")
 
-orig_cfg=$(find_bootloader_cfg  "${mp}")
-menu_dir=${orig_cfg%/*}
-[ -n "${orig_cfg}" ] || panic "Cannot find boot config"
-
-cfg="${wdir}/cfg"
-cp "${orig_cfg}" "${cfg}"
-chmod 0600 "${cfg}"
+cfg=$(find_bootloader_cfg  "${mp}")
+menu_dir="${cfg%/*}"
+if [ "${menu_dir}" = "${cfg}" ]; then 
+    menu_dir=""
+fi
+orig_cfg="${mp}/${cfg}"
+[ -r "${orig_cfg}" ] || panic "Cannot find boot config"
+cp "${orig_cfg}" "${wdir}/cfg"
+chmod +w "${wdir}/cfg"
 
 includes_level=0
 while [ "${includes_level}" -lt 8  ]
 do
-    cat "${cfg}" | prepare_include_commands "${mp}" "${menu_dir}" | remove_newlines 4 > "${wdir}/include.sed"
+    cat "${wdir}/cfg" | prepare_include_commands "${mp}" "${menu_dir}" | remove_newlines 4 > "${wdir}/include.sed"
     [ ${?} -eq 0 ] || panic "ISO parsing error"
-    sed -i -f "${wdir}/include.sed" "${cfg}"
-    [ ${?} -eq 0 ] || panic "ISO parsing error"
+    sed -i -f "${wdir}/include.sed" "${wdir}/cfg"
+    [ ${?} -eq 0 ] || panic "ISO pxarsing error"
     includes_level=$((includes_level+1))
 done
 
-cat "${cfg}" | extract_menu_items "${wdir}/default_item" > "${wdir}/menu_items"
-[ ${?} -eq 0 ] || panic "ISO parsing error"
-cat "${wdir}/menu_items" | extract_default_item "${mp}" "${menu_dir}" $(cat "${wdir}/default_item") > "${wdir}/boot_default"
+cat "${wdir}/cfg" | extract_menu_items "${wdir}/default" "${menu_dir}" > "${wdir}/isolinux.cfg"
 [ ${?} -eq 0 ] || panic "ISO parsing error"

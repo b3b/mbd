@@ -10,7 +10,7 @@ exit_to_shell() {
 
 panic() {
     umount '@mbd_dir@/mnt'
-    show error_msg "${msg}"
+    show error_msg "${1}"
     echo "${1}" >&2
     exit_to_shell
 }

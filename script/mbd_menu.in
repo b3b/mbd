@@ -2,6 +2,7 @@
 
 @include_script_lib@
 @include_dialog_lib@
+@include_isolinux_lib@
 
 usage() {
     cat << EOF
@@ -18,7 +19,7 @@ exit_to_shell() {
 }
 
 panic() {
-    show error_msg "${msg}"
+    show error_msg "${1}"
     echo "${1}" >&2
     exit_to_shell
 }
@@ -32,9 +33,11 @@ images_menu() {
 }
 
 kexec_to() {
-    choose="${1}"
-    . "${tmp_dir}/boot_default"
-    err=$(kexec_load "${tmp_dir}" "${kernel}" "${append}" "${initrd}" "${mbd_initrd}" "${choose}.iso" 2>&1)
+    local wdir="${1}"; local image="${2}"; local choose="${3}"
+    cat "${wdir}/isolinux.cfg" | isolinux_extract_entry "${wdir}/mp" "${choose}" > "${wdir}/kexec_parameters"
+    [ ${?} -eq 0 ] || { echo "error extracting label. ${err}"; return 1; }
+    . "${wdir}/kexec_parameters"    
+    err=$(kexec_load "${wdir}" "${kernel}" "${append}" "${initrd}" "${mbd_initrd}" "${image}" 2>&1)
     if [ ${?} -eq 0 ]; then
         sync
         umount -a
@@ -65,33 +68,69 @@ parse_args() {
     images_dir="$*"
 }
 
-parse_args "$@" || ! usage || exit_to_shell
-tmp_dir="${tmp_dir:-@tmp_dir@}"
-mbd_initrd="${mbd_initrd:-./mbd_initrd.gz}"
-images_dir="${images_dir:-./iso}"
-if [ -z "$(ls ${images_dir}/*.iso)" ]; then
-    msg="No ISO images found"
-    panic "${msg}"
-fi
+directory_menu() {
+    dialog_menu "What would you like to boot?"
+    for node in "${1}"/*; do
+        local name="${node##*/}"
+        if [ -d "${node}" ]; then
+            echo "'${name}' ''"
+        elif [ "${node}" != "${node%.[Ii][Ss][oO]}" ]; then
+            echo "'${name}' ''"
+        fi
+    done
+}
 
-choose=''
-while [ -z "${choose}" ]; do
-    show images_menu
-    if [ ${?} -eq 0 ] && [ -n "${choose}" ]; then
-        image="${images_dir}/${choose}.iso"
-        [ -x './@mbd_process_iso@' ] && cmd='./@mbd_process_iso@' || cmd='@mbd_process_iso@'
-        err=$("${cmd}" "${tmp_dir}" "${image}" 2>&1)
-        if [ ${?} -eq 0 ]; then
+directory_dialog() {
+    choose=''
+    while [ -z "${choose}" ]; do
+        show directory_menu "${1}"
+        if [ ${?} -eq 0 ] && [ -n "${choose}" ]; then
+            local node="${1}/${choose}"
+            if [ -d "${node}" ]; then
+                directory_dialog "${node}"
+            elif [ "${node}" != "${node%.[Ii][Ss][oO]}" ]; then
+                iso_dialog "${1}" "${choose}"
+            fi
+            choose=''
+        else
+            return 0
+        fi        
+    done
+}
+
+iso_menu() {
+    dialog_menu "What would you like to boot?"
+    cat "${1}" | isolinux_labels_list | sed -e "s_^_'_"  -e "s_\$_' ''_"
+}
+
+iso_dialog() {
+    local image="${1}/${2}"
+    local wdir="${tmp_dir}"$(readlink -f "${image}")
+    [ -x './@mbd_process_iso@' ] && cmd='./@mbd_process_iso@' || cmd='@mbd_process_iso@'
+    err=$("${cmd}" "${wdir}" "${image}" 2>&1)
+    if [ ! ${?} -eq 0 ] || [ ! -r "${wdir}/isolinux.cfg" ]; then
+        panic "Error processing image. ${err}"
+    fi
+    choose=''
+    while [ -z "${choose}" ]; do
+        show iso_menu "${wdir}/isolinux.cfg"
+        if [ ${?} -eq 0 ] && [ -n "${choose}" ]; then
             ask_confirmation 'The system will reboot (or crash). Continue?'
             if [ ${?} -eq 0 ]; then
-                err=$(kexec_to "${choose}" 2>&1)
+                err=$(kexec_to "${wdir}" "${2}" "${choose}" 2>&1)
+                panic "${err}"
             fi
+            choose=''
+        else
+            return 0
         fi
-        if [ -n "${err}" ]; then
-            show error_msg "${err}"
-        fi
-        choose=''
-    else
-       exit_to_shell
-    fi
-done
+    done
+}
+
+parse_args "$@" || ! usage || exit_to_shell
+tmp_dir=$(readlink -f "${tmp_dir:-@tmp_dir@}")
+mbd_initrd="${mbd_initrd:-./mbd_initrd.gz}"
+images_dir="${images_dir:-./iso}"
+iso_list=$(find "${images_dir}" -name '*.[Ii][Ss][oO]' -print)
+[ -z "${iso_list}" ] && panic "No ISO images found"
+directory_dialog "${images_dir}"
