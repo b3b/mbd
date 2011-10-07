@@ -81,15 +81,16 @@ directory_menu() {
 }
 
 directory_dialog() {
+    local root="${1}"; local dir="${2}"
     choose=''
     while [ -z "${choose}" ]; do
-        show directory_menu "${1}"
+        show directory_menu "${root}/${dir}"
         if [ ${?} -eq 0 ] && [ -n "${choose}" ]; then
-            local node="${1}/${choose}"
-            if [ -d "${node}" ]; then
-                directory_dialog "${node}"
-            elif [ "${node}" != "${node%.[Ii][Ss][oO]}" ]; then
-                iso_dialog "${1}" "${choose}"
+            local node="${root}/${dir}/${choose}"
+            if [ -d "${root}/${dir}/${choose}" ]; then
+                directory_dialog "${root}" "${dir}/${choose}"
+            elif [ "${choose}" != "${choose%.[Ii][Ss][oO]}" ]; then
+                iso_dialog "${root}" "${dir}/${choose}"
             fi
             choose=''
         else
@@ -133,4 +134,4 @@ mbd_initrd="${mbd_initrd:-./mbd_initrd.gz}"
 images_dir="${images_dir:-./iso}"
 iso_list=$(find "${images_dir}" -name '*.[Ii][Ss][oO]' -print)
 [ -z "${iso_list}" ] && panic "No ISO images found"
-directory_dialog "${images_dir}"
+directory_dialog "${images_dir}" ''
