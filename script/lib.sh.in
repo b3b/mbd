@@ -46,5 +46,6 @@ kexec_load() {
 	initrd="--initrd=${initrd}"
     fi
     kexec --load "${kernel}" --command-line="${append}" "${initrd}"
+    [ ${?} -eq 0 ] || return 1
     sync
 }

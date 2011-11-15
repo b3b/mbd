@@ -2,7 +2,7 @@
 show() {    
     choose=''
     local what=${1}; shift
-    local arg="$(echo $* | sed -e s_\'__g)"
+    local arg=$(echo "$*" | sed -e "s_\'__g")
     exec 3>&1
     choose=$(${what} "${arg}" | xargs dialog 2>&1 1>&3)
     local err=$?
@@ -27,4 +27,32 @@ persistently_ask_confirmation() {
 
 ask_confirmation() {
     [ ${yes_mode} ] || persistently_ask_confirmation "$@"
+}
+
+dialog_maxsize_hw() {
+    local N='\s*\([0-9]\+\)'
+    set -- $(dialog --print-maxsize 2>&1 | sed -e "s_^[^:]\+:${N},${N}\s*\$_\1 \2_") 
+    echo $((${1}-5)) $((${2}-2))
+}
+
+dialog_form() {
+    local text="${1}"; local fh=0;
+    echo "--backtitle \"@mbd_verbose@\"" --form \"${text}\" $(dialog_maxsize_hw) ${fh}
+    dialog_form_entry_pos=1
+}
+
+dialog_form_entry() {
+    local pos=${dialog_form_entry_pos}; local step=2
+    local label="${1}"; local label_x=0; local label_y=${pos}
+    local item="${2}"; local item_x=24; local item_y=${pos}
+    local flen=256; local ilen=512
+    echo \"${label}\" ${label_y} ${label_x} \"${item}\" ${item_y} ${item_x} ${flen} ${ilen}
+    dialog_form_entry_pos=$((pos+step))
+}
+
+dialog_form_menu() {
+    dialog_form "${1}"
+    while read label value;do
+        dialog_form_entry "${label}" "${value}"
+    done
 }

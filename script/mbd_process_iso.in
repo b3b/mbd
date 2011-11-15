@@ -94,9 +94,9 @@ do
     cat "${wdir}/cfg" | prepare_include_commands "${mp}" "${menu_dir}" | remove_newlines 4 > "${wdir}/include.sed"
     [ ${?} -eq 0 ] || panic "ISO parsing error"
     sed -i -f "${wdir}/include.sed" "${wdir}/cfg"
-    [ ${?} -eq 0 ] || panic "ISO pxarsing error"
+    [ ${?} -eq 0 ] || panic "ISO parsing error"
     includes_level=$((includes_level+1))
 done
 
-cat "${wdir}/cfg" | extract_menu_items "${wdir}/default" "${menu_dir}" > "${wdir}/isolinux.cfg"
+cat "${wdir}/cfg" | extract_menu_items "${wdir}/default_label" "${menu_dir}" > "${wdir}/isolinux.cfg"
 [ ${?} -eq 0 ] || panic "ISO parsing error"

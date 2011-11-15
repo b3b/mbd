@@ -33,11 +33,16 @@ images_menu() {
 }
 
 kexec_to() {
-    local wdir="${1}"; local image="${2}"; local choose="${3}"
-    cat "${wdir}/isolinux.cfg" | isolinux_extract_entry "${wdir}/mp" "${choose}" > "${wdir}/kexec_parameters"
-    [ ${?} -eq 0 ] || { echo "error extracting label. ${err}"; return 1; }
-    . "${wdir}/kexec_parameters"    
-    err=$(kexec_load "${wdir}" "${kernel}" "${append}" "${initrd}" "${mbd_initrd}" "${image}" 2>&1)
+    local wdir="${1}"; local image="${2}"
+    local kernel=''; local append=''; local initrd='' 
+    cat "${wdir}/isolinux_entry" | prepare_kexec_parameters "${wdir}/mp" > "${wdir}/kexec_parameters"
+    [ ${?} -eq 0 ] || { echo "error preparing kexc parameters."; return 1; }
+    cat "${wdir}/kexec_parameters" | {
+        read kernel
+        read initrd
+        read append
+         err=$(kexec_load "${wdir}" "${kernel}" "${append}" "${initrd}" "${mbd_initrd}" "${image}" 2>&1)
+    }
     if [ ${?} -eq 0 ]; then
         sync
         umount -a
@@ -100,8 +105,9 @@ directory_dialog() {
 }
 
 iso_menu() {
+    [ -n "${1}" ] &&  echo "--default-item \"${1}\""
     dialog_menu "What would you like to boot?"
-    cat "${1}" | isolinux_labels_list | sed -e "s_^_'_"  -e "s_\$_' ''_"
+    isolinux_labels_list | sed -e "s_^_'_"  -e "s_\$_' ''_"
 }
 
 iso_dialog() {
@@ -114,11 +120,41 @@ iso_dialog() {
     fi
     choose=''
     while [ -z "${choose}" ]; do
-        show iso_menu "${wdir}/isolinux.cfg"
+        show iso_menu $(cat "${wdir}/default_label") < "${wdir}/isolinux.cfg"
         if [ ${?} -eq 0 ] && [ -n "${choose}" ]; then
+            entry_dialog "${wdir}" "${2}" "${choose}"
+            choose=''
+        else
+            return 0
+        fi
+    done
+}
+
+entry_menu() {
+    local label; local value
+    for label in "Label:" "Kernel:" "Append:"; do
+        read value
+        echo "${label}" "${value}"
+    done | dialog_form_menu "${1}"
+}
+
+entry_dialog() {
+    local wdir="${1}"; local image="${2}"; local entry_name="${3}"
+    local entry=$(cat "${wdir}/isolinux.cfg" | isolinux_extract_entry "${choose}")
+    [ ${?} -eq 0 ] || { echo "error extracting label. ${err}"; return 1; }
+    local i
+    for i in "label" "kernel" "append"; do
+        i=$(echo "${entry}" | sed -ne "s_^${i}\s\+\(.*\)_\1_p")
+        echo "$i"
+    done > "${wdir}/isolinux_entry"
+    choose=''
+    while [ -z "${choose}" ]; do
+        show entry_menu "Boot entry" < "${wdir}/isolinux_entry"
+        if [ ${?} -eq 0 ] && [ -n "${choose}" ]; then
+            echo "${choose}" > "${wdir}/isolinux_entry"
             ask_confirmation 'The system will reboot (or crash). Continue?'
             if [ ${?} -eq 0 ]; then
-                err=$(kexec_to "${wdir}" "${2}" "${choose}" 2>&1)
+                err=$(kexec_to "${wdir}" "${image}" "${wdir}/isolinux_entry" 2>&1)
                 panic "${err}"
             fi
             choose=''
