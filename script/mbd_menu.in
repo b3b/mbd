@@ -24,14 +24,6 @@ panic() {
     exit_to_shell
 }
 
-images_menu() {
-    dialog_menu "What would you like to boot?"
-    for image in "${images_dir}/"*.iso; do
-        image="${image##*/}"; image="${image%.iso}"
-        echo "'${image}' ''"
-    done
-}
-
 kexec_to() {
     local wdir="${1}"; local image="${2}"
     local kernel=''; local append=''; local initrd='' 
@@ -78,9 +70,9 @@ directory_menu() {
     for node in "${1}"/*; do
         local name="${node##*/}"
         if [ -d "${node}" ]; then
-            echo "'${name}' ''"
+            echo "'${name}' '/'"
         elif [ "${node}" != "${node%.[Ii][Ss][oO]}" ]; then
-            echo "'${name}' ''"
+            echo "'${name}' ' '"
         fi
     done
 }
@@ -107,7 +99,7 @@ directory_dialog() {
 iso_menu() {
     [ -n "${1}" ] &&  echo "--default-item \"${1}\""
     dialog_menu "What would you like to boot?"
-    isolinux_labels_list | sed -e "s_^_'_"  -e "s_\$_' ''_"
+    isolinux_labels_list | sed -e "s_^_'_"  -e "s_\$_' ' '_"
 }
 
 iso_dialog() {
