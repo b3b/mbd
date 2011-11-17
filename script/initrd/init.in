@@ -45,7 +45,9 @@ if [ -x "/bin/run-init" ]; then
     mv "${switch_root_cmd}" "${switch_root_cmd}.orig"
     mv "@mbd_dir@/before_switch_root" "${switch_root_cmd}"
 else
-    if [ "x_${initrd}" = "x_rootfs.gz" ]; then
+    if [ "x_${initrd}" = "x_rootfs.gz" ] ||
+        [ "x_${initrd}" = "x_tinycore.gz" ] ||
+        [ "x_${initrd}" = "x_microcore.gz" ]; then
         umount ${mbd_device}
     else
         [ -f "${boot_image}" ] || panic "No image specified"
