@@ -25,7 +25,7 @@ remove_newlines(){
 
 find_bootloader_cfg(){
     local dir=$(readlink -f "${1}")
-    local cfg=$(find "$dir" -maxdepth 4 -name "isolinux.cfg" -type f | head -1)
+    local cfg=$(find "$dir" -maxdepth 4 -name 'isolinux.cfg' -type f | head -1)
     echo "${cfg#${dir}}"
 }
 
@@ -63,15 +63,15 @@ extract_menu_items(){
     }"
 }
 
-[ -n "${image}" ] && [ -n "${wdir}" ] || panic "Bad arguments"
+[ -n "${image}" ] && [ -n "${wdir}" ] || panic 'Bad arguments'
 mkdir -p "${wdir}"
-[ -d "${wdir}" ] || panic "Bad temporary directory"
+[ -d "${wdir}" ] || panic 'Bad temporary directory'
 if [ -f "${image}" ]
 then
     mp="${wdir}/mp"
     if ! [ -d "${mp}" ]; then
         mkdir -p "${mp}"
-        mount -o loop "${image}" "${mp}" || panic "Cannot mount image"
+        mount -o loop "${image}" "${mp}" || panic 'Cannot mount image'
     fi
 else
     mp="${image}"
@@ -79,12 +79,13 @@ fi
 mp=$(readlink -f "${mp}")
 
 cfg=$(find_bootloader_cfg  "${mp}")
+[ -n "${cfg}" ] || panic 'Cannot find boot config'
 menu_dir="${cfg%/*}"
 if [ "${menu_dir}" = "${cfg}" ]; then
     menu_dir=""
 fi
 orig_cfg="${mp}/${cfg}"
-[ -r "${orig_cfg}" ] || panic "Cannot find boot config"
+[ -r "${orig_cfg}" ] || panic 'Cannot find boot config'
 cp "${orig_cfg}" "${wdir}/cfg"
 chmod +w "${wdir}/cfg"
 
@@ -92,11 +93,12 @@ includes_level=0
 while [ "${includes_level}" -lt 8  ]
 do
     cat "${wdir}/cfg" | prepare_include_commands "${mp}" "${menu_dir}" | remove_newlines 4 > "${wdir}/include.sed"
-    [ ${?} -eq 0 ] || panic "ISO parsing error"
+    [ ${?} -eq 0 ] || panic 'ISO parsing error'
     sed -i -f "${wdir}/include.sed" "${wdir}/cfg"
-    [ ${?} -eq 0 ] || panic "ISO parsing error"
+    [ ${?} -eq 0 ] || panic 'ISO parsing error'
     includes_level=$((includes_level+1))
 done
 
+[ -s "${wdir}/cfg" ] || panic 'Error processing config'
 cat "${wdir}/cfg" | extract_menu_items "${wdir}/default_label" "${menu_dir}" > "${wdir}/isolinux.cfg"
-[ ${?} -eq 0 ] || panic "ISO parsing error"
+[ ${?} -eq 0 ] || panic 'ISO parsing error'
