@@ -12,7 +12,7 @@ scripts = $(foreach f, $(scripts_list), $(netbootcd_dir)/usr/bin/$(f))
 initrd_scripts_list = init before_switch_root
 initrd_scripts = $(foreach f, $(initrd_scripts_list), build/mbd_initrd.d@mbd_dir@/$(f))
 uninstall_list = $(standalone_scripts_list) syslinux.cfg ldlinux.sys vmlinuz initrd.gz mbd_initrd.gz @magic@
-modules = $(netbootcd_dir)/lib/modules/2.6.29.1-tinycore/kernel/fs
+modules = $(netbootcd_dir)/lib/modules/2.6.33.3-tinycore/kernel/fs
 
 all: $(downloads) build/sed
 	@echo 'Ready to install'
@@ -62,7 +62,7 @@ $(netbootcd_dir)/lib/modules/%: $(tinycore_dir)/lib/modules/%
 	cp -r '$<' '$@'
 
 $(netbootcd_dir)/usr/bin/@mbd_command@: script/@mbd_command@
-	sed -ne '$$ {/^sleep 2;sudo \S\+$$/ !q 1}' $(netbootcd_dir)/etc/skel/.profile
+	sed -ne '$$ {/sudo \S\+$$/ !q 1}' $(netbootcd_dir)/etc/skel/.profile
 	sed -ie '$$ {s_netboot$$_@mbd_command@_}' $(netbootcd_dir)/etc/skel/.profile
 	cp '$<' '$@'
 	chmod +x '$@'
@@ -90,7 +90,7 @@ build/sed: data/sed
 build/mbd_initrd.d: $(netbootcd_dir)
 	! [ -d '$@' ] || rm -rf './$@'
 	mkdir -p '$@@mbd_dir@'
-	cp -rp "$(netbootcd_dir)/dev" '$@@mbd_dir@/dev'
+	cp -rp "$(tinycore_dir)/dev" '$@@mbd_dir@/dev'
 
 build/%.d: data/%
 	@[ "$$(id -u)" = "0" ] || { echo 'Need root privileges' || false; }

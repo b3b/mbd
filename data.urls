@@ -1,4 +1,4 @@
-netbootcd http://downloads.tuxfamily.org/netbootcd/3.4/nbinit3.gz
-netbootcd_vmlinuz http://downloads.tuxfamily.org/netbootcd/3.4/kexec.bzI
+netbootcd http://downloads.tuxfamily.org/netbootcd/4.6/nbinit4.gz
+netbootcd_vmlinuz http://downloads.tuxfamily.org/netbootcd/4.6/kexec.bzI
 tinycore http://downloads.tuxfamily.org/netbootcd/3.4/build/microcore.gz
 sed http://ftp.gnu.org/gnu/sed/sed-4.2.tar.bz2
