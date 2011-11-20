@@ -26,9 +26,9 @@ panic() {
 
 kexec_to() {
     local wdir="${1}"; local image="${2}"
-    local kernel=''; local append=''; local initrd='' 
+    local kernel=''; local append=''; local initrd=''
     cat "${wdir}/isolinux_entry" | prepare_kexec_parameters "${wdir}/mp" > "${wdir}/kexec_parameters"
-    [ ${?} -eq 0 ] || { echo "error preparing kexc parameters."; return 1; }
+    [ ${?} -eq 0 ] || { echo 'error preparing kexc parameters.'; return 1; }
     cat "${wdir}/kexec_parameters" | {
         read kernel
         read initrd
@@ -59,14 +59,14 @@ parse_args() {
             \?|:)
                 return 1
                 ;;
-        esac        
+        esac
     done
     shift $((OPTIND-1)); OPTIND=1
     images_dir="$*"
 }
 
 directory_menu() {
-    dialog_menu "What would you like to boot?"
+    dialog_menu 'What would you like to boot?'
     for node in "${1}"/*; do
         local name="${node##*/}"
         if [ -d "${node}" ]; then
@@ -92,13 +92,13 @@ directory_dialog() {
             choose=''
         else
             return 0
-        fi        
+        fi
     done
 }
 
 iso_menu() {
     [ -n "${1}" ] &&  echo "--default-item \"${1}\""
-    dialog_menu "What would you like to boot?"
+    dialog_menu 'What would you like to boot?'
     isolinux_labels_list | sed -e "s_^_'_"  -e "s_\$_' ' '_"
 }
 
@@ -135,13 +135,13 @@ entry_dialog() {
     local entry=$(cat "${wdir}/isolinux.cfg" | isolinux_extract_entry "${choose}")
     [ ${?} -eq 0 ] || { echo "error extracting label. ${err}"; return 1; }
     local i
-    for i in "label" "kernel" "append"; do
+    for i in 'label' 'kernel' 'append'; do
         i=$(echo "${entry}" | sed -ne "s_^${i}\s\+\(.*\)_\1_p")
         echo "$i"
     done > "${wdir}/isolinux_entry"
     choose=''
     while [ -z "${choose}" ]; do
-        show entry_menu "Boot entry" < "${wdir}/isolinux_entry"
+        show entry_menu 'Boot entry' < "${wdir}/isolinux_entry"
         if [ ${?} -eq 0 ] && [ -n "${choose}" ]; then
             echo "${choose}" > "${wdir}/isolinux_entry"
             ask_confirmation 'The system will reboot (or crash). Continue?'
@@ -162,5 +162,5 @@ tmp_dir=$(readlink -f "${tmp_dir:-@tmp_dir@}")
 mbd_initrd="${mbd_initrd:-./mbd_initrd.gz}"
 images_dir="${images_dir:-./iso}"
 iso_list=$(find "${images_dir}" -name '*.[Ii][Ss][oO]' -print)
-[ -z "${iso_list}" ] && panic "No ISO images found"
+[ -z "${iso_list}" ] && panic 'No ISO images found'
 directory_dialog "${images_dir}" ''

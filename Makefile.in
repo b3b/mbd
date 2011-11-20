@@ -23,16 +23,16 @@ install: mount_device $(install_dir)/@magic@ $(install_dir)/initrd.gz $(install_
 	@echo 'Installation complete'
 
 data/%: data.urls
-	mkdir -p $(@D)
+	mkdir -p "$(@D)"
 	url=`sed -ne 's/^$* //p' data.urls` && \
 	echo "download $$url" && \
-	@downloader@ $@ $$url
-	touch $@
+	@downloader@ '$@' "$$url"
+	touch '$@'
 
 mount_device: force
 	[ -b '@target_device@' ]
 	umount '@target_device@' || true
-	mkdir -p mnt
+	mkdir -p 'mnt'
 	mount '@target_device@' mnt
 
 $(install_dir)/@magic@:
@@ -40,81 +40,81 @@ $(install_dir)/@magic@:
 	sh install_syslinux.sh
 	sync
 	mount '@target_device@' mnt
-	[ -d $(@D) ]
-	touch $@
+	[ -d '$(@D)' ]
+	touch '$@'
 
 $(install_dir)/@mbd_menu@: script/@mbd_menu@
-	install -m500 $< $@
+	install -m500 '$<' '$@'
 
 $(install_dir)/@mbd_process_iso@: script/@mbd_process_iso@
-	install -m500 $< $@
+	install -m500 '$<' '$@'
 
 $(install_dir)/%.gz: build/%.gz
-	cp $< $@
+	cp '$<' '$@'
 
 build/initrd.gz: $(initrd_dirs) $(scripts) $(modules) $(netbootcd_dir)/usr/bin/sed
-	cd $(netbootcd_dir) && find . | cpio --create --format='newc' | gzip -c > ../$(@F)
+	cd "$(netbootcd_dir)" && find . | cpio --create --format='newc' | gzip -c > "../$(@F)"
 
 build/mbd_initrd.gz: build/mbd_initrd.d $(initrd_scripts) 
-	cd build/mbd_initrd.d && find . | cpio --create --format='newc' | gzip -c > ../$(@F)
+	cd 'build/mbd_initrd.d' && find . | cpio --create --format='newc' | gzip -c > "../$(@F)"
 
 $(netbootcd_dir)/lib/modules/%: $(tinycore_dir)/lib/modules/%
-	cp -r $< $@
+	cp -r '$<' '$@'
 
 $(netbootcd_dir)/usr/bin/@mbd_command@: script/@mbd_command@
 	sed -ne '$$ {/^sleep 2;sudo \S\+$$/ !q 1}' $(netbootcd_dir)/etc/skel/.profile
 	sed -ie '$$ {s_netboot$$_@mbd_command@_}' $(netbootcd_dir)/etc/skel/.profile
-	cp $< $@
-	chmod +x $@
+	cp '$<' '$@'
+	chmod +x '$@'
 
 $(netbootcd_dir)/usr/bin/sed: build/sed
-	cp $< $@
-	chmod +x $@
+	cp '$<' '$@'
+	chmod +x '$@'
 
 $(netbootcd_dir)/usr/bin/%: script/%
-	cp $< $@
-	chmod +x $@
+	cp '$<' '$@'
+	chmod +x '$@'
 
 build/mbd_initrd.d@mbd_dir@/%: script/initrd/%
-	mkdir -p $(@D)
-	cp $< $@
-	chmod +x $@
+	mkdir -p "$(@D)"
+	cp '$<' '$@'
+	chmod +x '$@'
 
 build/sed: data/sed
-	! [ -d $@.d ] || rm -rf ./$@.d
-	mkdir -p $@.d
-	tar -C $@.d -xjf $<
-	cd $@.d/sed-* && ./configure && make
-	cp $@.d/sed-*/sed/sed $@
+	! [ -d '$@.d' ] || rm -rf './$@.d'
+	mkdir -p '$@.d'
+	tar -C '$@.d' -xjf '$<'
+	cd '$@.d/sed'-* && ./configure && make
+	cp '$@.d/sed'-*'/sed/sed' '$@'
 
 build/mbd_initrd.d: $(netbootcd_dir)
-	! [ -d $@ ] || rm -rf ./$@
-	mkdir -p $@@mbd_dir@
-	cp -rp $(netbootcd_dir)/dev $@@mbd_dir@/dev
+	! [ -d '$@' ] || rm -rf './$@'
+	mkdir -p '$@@mbd_dir@'
+	cp -rp "$(netbootcd_dir)/dev" '$@@mbd_dir@/dev'
 
 build/%.d: data/%
-	@[ "$$(id -u)" = "0" ] || { echo "Need root privileges" || false; }
-	! [ -d "./$@.tmp" ] || rm -rf "./$@.tmp"
-	mkdir -p "./$@.tmp"
-	cd "./$@.tmp" && cat "../../data/$*" | gzip -cd | cpio -id --no-absolute-filenames
-	! [ -d "./$@" ] || rm -rf "./$@"
-	mv "./$@.tmp" "./$@"
+	@[ "$$(id -u)" = "0" ] || { echo 'Need root privileges' || false; }
+	! [ -d './$@.tmp' ] || rm -rf './$@.tmp'
+	mkdir -p './$@.tmp'
+	cd './$@.tmp' && cat '../../data/$*' | gzip -cd | cpio -id --no-absolute-filenames
+	! [ -d './$@' ] || rm -rf './$@'
+	mv './$@.tmp' './$@'
 
 $(install_dir)/vmlinuz: data/netbootcd_vmlinuz
-	cp $< $@
+	cp '$<' '$@'
 
 $(install_dir)/syslinux.cfg: syslinux.cfg
-	cp $< $@
+	cp '$<' '$@'
 
 clean:
 	[ -d 'mnt' ] && umount 'mnt' || true
 	! [ -d 'mnt' ] || ! [ "$$(ls -A mnt)" ]
-	! [ -d 'mnt' ] || rm -rf mnt
-	! [ -d 'build' ] || rm -rf build
-	! [ -d 'data' ] || rm -rf data
+	! [ -d 'mnt' ] || rm -rf 'mnt'
+	! [ -d 'build' ] || rm -rf 'build'
+	! [ -d 'data' ] || rm -rf 'data'
 
 uninstall: mount_device
-	[ -f "$(install_dir)/@magic@" ] || { echo "Not installed - no magic"; umount mnt; false; }
+	[ -f "$(install_dir)/@magic@" ] || { echo 'Not installed - no magic'; umount 'mnt'; false; }
 	{ for i in $(uninstall_list); do rm "$(install_dir)/$$i"; done; }
 	[ "$$(ls -A mnt/@images_dir@)" ] || { rm -r "mnt/@images_dir@" && \
 	{ [ "$$(ls -A $(install_dir))" ] || rm -r "$(install_dir)"; }; }
@@ -123,4 +123,4 @@ uninstall: mount_device
 	@echo 'Uninstalled'
 
 force: 
-.PHONY: all install need_root uninstall clean
+.PHONY: all clean install need_root uninstall

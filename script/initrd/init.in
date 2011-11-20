@@ -23,7 +23,7 @@ for i in 'ehci-hcd' 'ohci-hcd' 'uhci-hcd' 'usb-storage' 'ata_piix' 'sd_mod'; do
     modprobe ${i} 
 done
 
-[ -b /dev/@loop_dev@ ] || panic "No devices files"
+[ -b /dev/@loop_dev@ ] || panic 'No devices files'
 find_mount_mbd '@mbd_dir@/mnt'
 [ -f '@mbd_dir@/mnt/@isolinux_dir@/@magic@' ] || panic "Cannot mount \"@mbd_verbose@\" disk"
  
@@ -38,23 +38,23 @@ for x in $(cat /proc/cmdline); do
     esac
 done
 
-if [ -x "/bin/run-init" ]; then
+if [ -x '/bin/run-init' ]; then
     umount ${mbd_device}
     mv ${mbd_device} @mbd_dir@/device
-    switch_root_cmd="/bin/run-init"
+    switch_root_cmd='/bin/run-init'
     mv "${switch_root_cmd}" "${switch_root_cmd}.orig"
-    mv "@mbd_dir@/before_switch_root" "${switch_root_cmd}"
+    mv '@mbd_dir@/before_switch_root' "${switch_root_cmd}"
 else
     if [ "x_${initrd}" = "x_rootfs.gz" ] ||
         [ "x_${initrd}" = "x_tinycore.gz" ] ||
         [ "x_${initrd}" = "x_microcore.gz" ]; then
         umount ${mbd_device}
     else
-        [ -f "${boot_image}" ] || panic "No image specified"
-        losetup '/dev/@loop_dev@' "${boot_image}" || panic "Cannot mount image"
+        [ -f "${boot_image}" ] || panic 'No image specified'
+        losetup '/dev/@loop_dev@' "${boot_image}" || panic 'Cannot mount image'
     fi
-    if [ -x "/sbin/switch_root" ]; then
-        switch_root_cmd="/sbin/switch_root"
+    if [ -x '/sbin/switch_root' ]; then
+        switch_root_cmd='/sbin/switch_root'
         cp "${switch_root_cmd}" "@mbd_dir@/${switch_root_cmd##*/}"
         rm "${switch_root_cmd}"
         ln -s '@mbd_dir@/before_switch_root' "${switch_root_cmd}"
@@ -66,5 +66,5 @@ mv /dev.orig /dev
 umount /sys
 umount /proc
 exec /init 
-panic "Cannot execute /init"
+panic 'Cannot execute /init'
 exec /bin/sh

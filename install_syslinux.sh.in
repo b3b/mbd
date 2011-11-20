@@ -1,21 +1,21 @@
 #!/bin/sh
 
-part_dev="@target_device@"
+part_dev='@target_device@'
 [ -b "${part_dev}" ] || exit 1
-dev=$(readlink -f "@target_device@")
+dev=$(readlink -f '@target_device@')
 dev_pattern='\(/dev/[^0-9]\+\)\([0-9]\+\)'
 mbr_dev=$(echo "${dev}" | sed -e "s_^${dev_pattern}\$_\1_")
 partition_num=$(echo "${dev}" | sed -e "s_^${dev_pattern}\$_\2_")
 
-[ -b "${mbr_dev}" ] && [ "${partition_num}" == "1" ] && 
-[ -f "@syslinux_mbr_file@" ] || exit 1
+[ -b "${mbr_dev}" ] && [ "${partition_num}" == '1' ] && 
+[ -f '@syslinux_mbr_file@' ] || exit 1
 
 echo -n "Install Syslinux on partition \"${part_dev}\""
 [ "${dev}" != "${part_dev}" ] && echo -n " (\"${dev}\")"
 echo ", device \"${mbr_dev}\""
-echo  "Is this correct? (type \"y\" to continue)"
+echo  'Is this correct? (type "y" to continue)'
 read crazy_enough
-[ "${crazy_enough}" = "y" ] || exit 1
+[ "${crazy_enough}" = 'y' ] || exit 1
 
 mkdir -p 'mnt/@isolinux_dir@'
 mkdir -p 'mnt/@images_dir@'

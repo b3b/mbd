@@ -24,12 +24,12 @@ netbootcd() {
 }
 
 main_menu() {
-    dialog_menu "What would you like to do?"
+    dialog_menu 'What would you like to do?'
     echo "'Live' 'Boot image'"
     echo "'NetbootCD' 'Run NetbootCD script'"
 }
 
-if [ $(whoami) != "root" ];then
+if [ "$(whoami)" != 'root' ];then
 	exec sudo $0 $*
 fi
 
@@ -40,13 +40,13 @@ choose=''
 while [ -z "${choose}" ];do
     show main_menu
     case "${choose}" in
-        Live)            
+        Live)
             @mbd_menu@ -y -t '@tmp_dir@' \
                 -i '@tmp_dir@/mnt/@isolinux_dir@/mbd_initrd.gz' \
                 '@tmp_dir@/mnt/@images_dir@'
 	    choose=''
             ;;
-        NetbootCD) 
+        NetbootCD)
 	    netbootcd
 	    choose=''
             ;;

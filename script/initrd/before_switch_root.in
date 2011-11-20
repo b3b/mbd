@@ -19,7 +19,7 @@ else
     newroot="${3}"
 fi
 
-if [ -n "@desktop_link@" ]; then
+if [ -n '@desktop_link@' ]; then
     link_name=mbd_link.desktop
 for i in "${newroot}/home"/*;do
     desktop_entry "${i}/Desktop" "${link_name}"

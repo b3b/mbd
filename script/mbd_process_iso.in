@@ -67,10 +67,10 @@ extract_menu_items(){
 mkdir -p "${wdir}"
 [ -d "${wdir}" ] || panic "Bad temporary directory"
 if [ -f "${image}" ]
-then 
+then
     mp="${wdir}/mp"
     if ! [ -d "${mp}" ]; then
-        mkdir -p "${mp}" 
+        mkdir -p "${mp}"
         mount -o loop "${image}" "${mp}" || panic "Cannot mount image"
     fi
 else
@@ -80,7 +80,7 @@ mp=$(readlink -f "${mp}")
 
 cfg=$(find_bootloader_cfg  "${mp}")
 menu_dir="${cfg%/*}"
-if [ "${menu_dir}" = "${cfg}" ]; then 
+if [ "${menu_dir}" = "${cfg}" ]; then
     menu_dir=""
 fi
 orig_cfg="${mp}/${cfg}"
