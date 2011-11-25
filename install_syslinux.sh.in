@@ -7,7 +7,7 @@ dev_pattern='\(/dev/[^0-9]\+\)\([0-9]\+\)'
 mbr_dev=$(echo "${dev}" | sed -e "s_^${dev_pattern}\$_\1_")
 partition_num=$(echo "${dev}" | sed -e "s_^${dev_pattern}\$_\2_")
 
-[ -b "${mbr_dev}" ] && [ "${partition_num}" == '1' ] && 
+[ -b "${mbr_dev}" ] && [ "x_${partition_num}" = 'x_1' ] && 
 [ -f '@syslinux_mbr_file@' ] || exit 1
 
 echo -n "Install Syslinux on partition \"${part_dev}\""
