@@ -19,13 +19,13 @@ prepare_include_commands(){
 }
 
 remove_newlines(){
-    local step=$(for i in $(seq ${1:-1}); do echo -n 'N;'; done)
+    local step; step=$(for i in $(seq ${1:-1}); do echo -n 'N;'; done)
     sed -n -e "${step}s/\n//;p"
 }
 
 find_bootloader_cfg(){
-    local dir=$(readlink -f "${1}")
-    local cfg=$(find "$dir" -maxdepth 4 -name 'isolinux.cfg' -type f | head -1)
+    local dir; dir=$(readlink -f "${1}")
+    local cfg; cfg=$(find "$dir" -maxdepth 4 -name 'isolinux.cfg' -type f | head -1)
     echo "${cfg#${dir}}"
 }
 

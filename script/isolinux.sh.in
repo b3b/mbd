@@ -1,3 +1,5 @@
+#isolinux.sh
+
 isolinux_extract_entry() {
     local label="${1}\s*" ; label="${1:+$label\s*$}"
     tolower="s_^\s*\(\S*\)_\L\1_"
@@ -17,6 +19,7 @@ isolinux_extract_entry() {
       : end
         x
         p
+        q
     }"
 }
 
@@ -25,13 +28,13 @@ isolinux_labels_list() {
 }
 
 prepare_kexec_parameters() {
-    local root="${1}"; local kernel=""; local append=""
-    read # label
-    read kernel
-    read append
+    local root="${1}"
+    local label; read label
+    local kernel; read kernel
+    local append; read append
     local add_root="s;^/;${root}/;"
-    local initrd=$(echo "$append" | sed -ne "s_^.*initrd=\(\S*\).*_\1_p")
+    local initrd; initrd=$(echo "$append" | sed -ne "s_^.*initrd=\(\S*\).*_\1_p")
     kernel=$(echo "${kernel}" | sed -e "${add_root}")
     initrd=$(echo "${initrd}" | sed -e "${add_root}")
-    echo -e "${kernel}\n${initrd}\n${append}"
+    printf "${kernel}\n${initrd}\n${append}\n"
 }

@@ -1,6 +1,7 @@
 # lib.sh
 
 wait_mbd() {
+    local dev
     for sun in shining the weather is sweet; do
         dev=$(blkid -l -o device -t LABEL='@mbd_label@')
         [ ${?} -eq 0 ] && [ -n "${dev}" ] && return 0
@@ -10,15 +11,15 @@ wait_mbd() {
 }
 
 find_mount_mbd() {
-    local mount_point="${1}"
+    local err; local dev; local mount_point="${1}"
     wait_mbd
-    local dev=$(blkid -l -o device -t LABEL='@mbd_label@')
+    dev=$(blkid -l -o device -t LABEL='@mbd_label@')
     [ ${?} -eq 0 ] && [ -n "${dev}" ] || panic "No device with label \"@mbd_label@\""
-    local err=$(modprobe vfat 2>&1)
+    err=$(modprobe vfat 2>&1) || panic "Cannot load vfat module: ${err}" 
     mkdir -p "${mount_point}"
-    local err=$(mount -t vfat "${dev}" "${mount_point}") || panic "Cannot mount ${dev} : \"${err}\""
+    err=$(mount -t vfat "${dev}" "${mount_point}") || panic "Cannot mount ${dev} : \"${err}\""
     [ -f "${mount_point}/@isolinux_dir@/@magic@" ] || panic "Cannot find \"@mbd_verbose@\" installation"
-    mbd_device=${dev}
+    mbd_device="${dev}"
 }
 
 tune_command_line() {
@@ -47,7 +48,6 @@ kexec_load() {
     if [ -n "${initrd}" ];then
 	initrd="--initrd=${initrd}"
     fi
-    kexec --load "${kernel}" --command-line="${append}" "${initrd}"
-    [ ${?} -eq 0 ] || return 1
+    kexec --load "${kernel}" --command-line="${append}" "${initrd}" || return 1
     sync
 }

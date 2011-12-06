@@ -3,10 +3,11 @@
 show() {
     choose=''
     local what=${1}; shift
-    local arg=$(echo "$*" | sed -e "s_\'__g")
+    local arg; arg=$(echo "$*" | sed -e "s_\'__g")
+    local err
     exec 3>&1
     choose=$(${what} "${arg}" | xargs dialog 2>&1 1>&3)
-    local err=$?
+    err=$?
     exec 3>&-
     return ${err}
 }
@@ -20,9 +21,9 @@ dialog_menu() {
 }
 
 persistently_ask_confirmation() {
-    local text=${1:-Yep?}
-    local yes_label=${2:+--yes-label \"${2}\"}
-    local no_label=${3:+--no-label \"${3}\"}
+    local text; text=${1:-Yep?}
+    local yes_label; yes_label=${2:+--yes-label \"${2}\"}
+    local no_label; no_label=${3:+--no-label \"${3}\"}
     echo ${yes_label} ${no_label} --yesno \"${text}\" 8 32 | xargs dialog
 }
 
@@ -52,6 +53,7 @@ dialog_form_entry() {
 }
 
 dialog_form_menu() {
+    local label; local value
     dialog_form "${1}"
     while read label value;do
         dialog_form_entry "${label}" "${value}"

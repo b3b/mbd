@@ -26,25 +26,25 @@ panic() {
 
 kexec_to() {
     local wdir="${1}"; local image="${2}"
-    local kernel=''; local append=''; local initrd=''
     cat "${wdir}/isolinux_entry" | prepare_kexec_parameters "${wdir}/mp" > "${wdir}/kexec_parameters"
     [ ${?} -eq 0 ] || { echo 'error preparing kexc parameters.'; return 1; }
-    cat "${wdir}/kexec_parameters" | {
-        read kernel
-        read initrd
-        read append
-         err=$(kexec_load "${wdir}" "${kernel}" "${append}" "${initrd}" "${mbd_initrd}" "${image}" 2>&1)
-    }
+    local err; err=$(cat "${wdir}/kexec_parameters" | {
+            local kernel; read kernel
+            local initrd; read initrd
+            local append; read append
+            kexec_load "${wdir}" "${kernel}" "${append}" "${initrd}" "${mbd_initrd}" "${image}"
+        } 2>&1)
     if [ ${?} -eq 0 ]; then
         sync
         umount -a
         mount -o remount,ro /
-        kexec -e
+        err=$(kexec -e)
     fi
     echo "kexec fail. ${err}"
 }
 
 parse_args() {
+    local opt
     while getopts ':t:i:y' opt; do
         case ${opt} in
             t)
@@ -66,9 +66,10 @@ parse_args() {
 }
 
 directory_menu() {
-    dialog_menu 'What would you like to boot?'
+    local node; local name
+    dialog_menu 'What would you like to boot?' || return 1
     for node in "${1}"/*; do
-        local name="${node##*/}"
+        name="${node##*/}"
         if [ -d "${node}" ]; then
             echo "'${name}' '/'"
         elif [ "${node}" != "${node%.[Ii][Ss][oO]}" ]; then
@@ -104,7 +105,8 @@ iso_menu() {
 
 iso_dialog() {
     local image="${1}/${2}"
-    local wdir="${tmp_dir}"$(readlink -f "${image}")
+    local err; local cmd; local wdir
+    wdir="${tmp_dir}"$(readlink -f "${image}")
     [ -x './@mbd_process_iso@' ] && cmd='./@mbd_process_iso@' || cmd='@mbd_process_iso@'
     err=$("${cmd}" "${wdir}" "${image}" 2>&1)
     if [ ! ${?} -eq 0 ] || [ ! -r "${wdir}/isolinux.cfg" ]; then
@@ -131,9 +133,9 @@ entry_menu() {
 }
 
 entry_dialog() {
-    local wdir="${1}"; local image="${2}"; local entry_name="${3}"
-    local entry=$(cat "${wdir}/isolinux.cfg" | isolinux_extract_entry "${choose}")
-    [ ${?} -eq 0 ] || { echo "error extracting label. ${err}"; return 1; }
+    local err; local wdir="${1}"; local image="${2}"; local entry_name="${3}"
+    local entry; entry=$(cat "${wdir}/isolinux.cfg" | isolinux_extract_entry "${choose}")
+    [ ${?} -eq 0 ] || { echo "error extracting label. ${entry}"; return 1; }
     local i
     for i in 'label' 'kernel' 'append'; do
         i=$(echo "${entry}" | sed -ne "s_^${i}\s\+\(.*\)_\1_p")
