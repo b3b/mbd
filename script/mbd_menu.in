@@ -35,6 +35,7 @@ kexec_to() {
             kexec_load "${wdir}" "${kernel}" "${append}" "${initrd}" "${mbd_initrd}" "${image}"
         } 2>&1)
     if [ ${?} -eq 0 ]; then
+        init 1
         sync
         umount -a
         mount -o remount,ro /
