@@ -15,7 +15,7 @@ find_mount_mbd() {
     wait_mbd
     dev=$(blkid -l -o device -t LABEL='@mbd_label@')
     [ ${?} -eq 0 ] && [ -n "${dev}" ] || panic "No device with label \"@mbd_label@\""
-    err=$(modprobe vfat 2>&1) || panic "Cannot load vfat module: ${err}" 
+    modprobe vfat
     mkdir -p "${mount_point}"
     err=$(mount -t vfat "${dev}" "${mount_point}") || panic "Cannot mount ${dev} : \"${err}\""
     [ -f "${mount_point}/@isolinux_dir@/@magic@" ] || panic "Cannot find \"@mbd_verbose@\" installation"

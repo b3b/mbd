@@ -1,13 +1,29 @@
 #!/bin/sh
 
-panic(){
+@include_script_lib@
+
+panic() {
     echo "Boot error. ${1}"
     echo "Press Enter to continue boot, Type abracadabra for shell"
     read what
     [ -n "${what}" ] && exec /bin/sh
 }
 
-@include_script_lib@
+get_parameter() {
+    local p; p=$(cat /proc/cmdline | sed -e "s|\s|\n|g" | sed -ne "/^${1}\(=\|\$\)/p")
+    [ -n "${p}" ] && echo "${p}" | sed -ne "/^$1=/{s|^[^=]*=||;h;}; \$ {x;p}"
+}
+
+ask_confirmation() {
+    local text; text=${1:-Continue?}
+    local yes_label; yes_label=${2:-y}
+    local no_label; no_label=${3:-n}
+    echo "${text} (${yes_label}/${no_label})"
+    read what
+    [ "x_${what}" = "x_${yes_label}" ] && return 0
+    [ "x_${what}" = "x_${no_label}" ] && return 1
+    ask_confirmation "${text}" "${yes_label}" "${no_label}"
+}
 
 PATH="${PATH}:/sbin:/usr/sbin:/bin:/usr/bin"
 /bin/busybox --install -s
@@ -52,6 +68,18 @@ else
     else
         [ -f "${boot_image}" ] || panic 'No image specified'
         losetup '/dev/@loop_dev@' "${boot_image}" || panic 'Cannot mount image'
+
+        # Tiny Core v4.2
+        if [ "x_${initrd}" = "x_core.gz" ]; then
+            mkdir '@mbd_dir@/image' ; mount '/dev/@loop_dev@' '@mbd_dir@/image'
+
+            get_parameter 'cde' && [ -z $(get_parameter 'tce') ] &&
+            [ ! -d '@mbd_dir@/mnt/tce' ] && [ -d '@mbd_dir@/image/cde' ] &&
+            ask_confirmation 'No TCE apps directory found on disk. Copy apps directory from image?' &&
+            cp -r '@mbd_dir@/image/cde' '@mbd_dir@/mnt/tce'
+            
+            umount '@mbd_dir@/image' ; losetup -d '/dev/@loop_dev@' ; umount ${mbd_device}
+        fi
     fi
     if [ -x '/sbin/switch_root' ]; then
         switch_root_cmd='/sbin/switch_root'
