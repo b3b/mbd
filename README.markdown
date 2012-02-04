@@ -4,37 +4,37 @@ Multiboot flash drive creation
 # Usage
 ## Get
 Run next commands:
-    git clone git://gitorious.org/multi-boot-disk-test/multi-boot-disk-test.git
-    cd multi-boot-disk-test
+    ```git clone git://gitorious.org/multi-boot-disk-test/multi-boot-disk-
+test.git
+    cd multi-boot-disk-test```
 ## Configure
 Run
-    autoconf
+    ```autoconf```
 Run _configure_ with the _target_device_  environment variable set to partition device file. If /dev/_PARTITION_ is your USB flash drive partition device file (as "sdx1", or "disk/by-uuid/NNNN"), run
-    ./configure target_device=/dev/PARTITION
+    ```./configure target_device=/dev/PARTITION```
 ## Build
-On build stage, script will download [NetbootCD](http://netbootcd.tuxfamily.org/) and [Tiny Core Linux](http://distro.ibiblio.org/tinycorelinux/
-) live CDs; download and build [GNU sed stream editor](http://www.gnu.org/s/sed/). Run
-    make
+On build stage, script will download [NetbootCD](http://netbootcd.tuxfamily.org/) and [Tiny Core Linux](http://distro.ibiblio.org/tinycorelinux/) live CDs; download and build [GNU sed stream editor](http://www.gnu.org/s/sed/). Run
+    ```make```
 ## Install
 Need root privileges. Script will ask for confirmation, before boot loader ([Syslinux](http://syslinux.zytor.com/wiki/index.php/The_Syslinux_Project)) install. Run
-    make install
+    ```make install```
 ## Use
 Put LIVE CDs (*.iso) images into the "isolinux/iso" directory on your USB flash drive. Example, if MP is flash USB drive mount point:
-    cp my-cool-live-cds/*.iso MP/isolinux/iso/
+    ```cp my-cool-live-cds/*.iso MP/isolinux/iso/
     mkdir MP/isolinux/iso/Debian
-    cp my-cool-live-debian-cds/*.iso MP/isolinux/iso/Debian/
+    cp my-cool-live-debian-cds/*.iso MP/isolinux/iso/Debian/```
 Boot from USB flash drive, and follow the menus
 ## Uninstall
 From mbd source directory, run
-    make uninstall
+    ```make uninstall```
 
 # Special Use
 Add desktop link to Live CD desktop. Run configure with the _desktop_link_ environment variable set. Example:
-    ./configure target_device=/dev/PARTITION desktop_link='http://www.gitorious.org'
+    ```./configure target_device=/dev/PARTITION``` desktop_link='http://www.gitorious.org'
 Boot Live CD from running system. Example, if MP is flash USB drive mount point:
-    cd MP/isoinux
+    ```cd MP/isoinux
     mkdir /tmp/mbd
-    sh mbd_menu -t /tmp/mbd
+    sh mbd_menu -t /tmp/mbd```
 
 # Tested with
 
@@ -54,4 +54,3 @@ Boot Live CD from running system. Example, if MP is flash USB drive mount point:
 <tr><td><a href="http://www.damnsmalllinux.org/">Damn Small Linux</a></td><td><b>not</b> work</td></tr>
 <tr><td><a href="http://www.slax.org/get_slax.php">Slax</a></td><td><b>not </b>work</td></tr>
 </table>
-
