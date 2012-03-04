@@ -26,7 +26,7 @@ Multiboot flash drive creation
 Run next commands:
 
     git clone git://github.com/b3b/mbd.git
-    cd multi-boot-disk-test
+    cd mbd
 
 ## Configure
 Run
@@ -35,6 +35,8 @@ Run
 Run _configure_ with the _target_device_ environment variable set to partition device file. If /dev/_PARTITION_ is your USB flash drive partition device file (as "sdx1", or "disk/by-uuid/NNNN"), run
     
     ./configure target_device=/dev/PARTITION
+
+FAT32 partitions is only supported (currently)
 
 ## Build
 On build stage, script will download NetbootCD and Tiny Core Linux live CDs; download and build GNU sedstream editor. Run
