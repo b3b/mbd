@@ -27,11 +27,14 @@ main_menu() {
     dialog_menu 'What would you like to do?'
     echo "'Live' 'Boot image'"
     echo "'NetbootCD' 'Run NetbootCD script'"
+    [ -n "$(which startx)" ] && echo "'Desktop' 'Start X desktop'"
 }
 
 if [ "$(whoami)" != 'root' ];then
 	exec sudo $0 $*
 fi
+
+_user="${SUDO_USER:-USER}"
 
 [ -f '@tmp_dir@/mnt/@isolinux_dir@/@magic@' ] || find_mount_mbd '@tmp_dir@/mnt'
 [ -f '@tmp_dir@/mnt/@isolinux_dir@/@magic@' ] || panic "Cannot mount \"@mbd_verbose@\" disk"
@@ -47,7 +50,11 @@ while [ -z "${choose}" ];do
 	    choose=''
             ;;
         NetbootCD)
-	    netbootcd
+	    sudo -u "${_user}" netboot
+	    choose=''
+            ;;
+        Desktop)
+	    sudo -u "${_user}" startx
 	    choose=''
             ;;
         *)

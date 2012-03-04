@@ -1,7 +1,6 @@
 netbootcd_dir = build/netbootcd.d
-tinycore_dir = build/tinycore.d
 install_dir = mnt/@isolinux_dir@
-initrd_list = netbootcd tinycore
+initrd_list = netbootcd
 initrd_dirs = $(foreach f, $(initrd_list), build/$(f).d)
 downloads_list = $(initrd_list) netbootcd_vmlinuz sed
 downloads = $(foreach f, $(downloads_list), data/$(f))
@@ -12,7 +11,6 @@ scripts = $(foreach f, $(scripts_list), $(netbootcd_dir)/usr/bin/$(f))
 initrd_scripts_list = init before_switch_root
 initrd_scripts = $(foreach f, $(initrd_scripts_list), build/mbd_initrd.d@mbd_dir@/$(f))
 uninstall_list = $(standalone_scripts_list) syslinux.cfg ldlinux.sys vmlinuz initrd.gz mbd_initrd.gz @magic@
-modules = $(netbootcd_dir)/lib/modules/2.6.33.3-tinycore/kernel/fs
 
 all: $(downloads) build/sed
 	@echo 'Ready to install'
@@ -24,10 +22,10 @@ install: mount_device $(install_dir)/@magic@ $(install_dir)/initrd.gz $(install_
 
 data/%: data.urls
 	mkdir -p "$(@D)"
-	url=`sed -ne 's/^$* //p' data.urls` && \
-	echo "download $$url" && \
-	@downloader@ '$@' "$$url"
-	touch '$@'
+	url=`sed -ne 's/^$* //p' data.urls` ; \
+	[ -n "$$url" ] && { echo "download $$url" && \
+	@downloader@ '$@' "$$url" && \
+	touch '$@'; } || { echo "Error while downloading '$*'"; false; }
 
 mount_device: force
 	[ -b '@target_device@' ]
@@ -52,18 +50,15 @@ $(install_dir)/@mbd_process_iso@: script/@mbd_process_iso@
 $(install_dir)/%.gz: build/%.gz
 	cp '$<' '$@'
 
-build/initrd.gz: $(initrd_dirs) $(scripts) $(modules) $(netbootcd_dir)/usr/bin/sed
+build/initrd.gz: $(initrd_dirs) $(scripts) $(netbootcd_dir)/usr/bin/sed
 	cd "$(netbootcd_dir)" && find . | cpio --create --format='newc' | gzip -c > "../$(@F)"
 
 build/mbd_initrd.gz: build/mbd_initrd.d $(initrd_scripts) 
 	cd 'build/mbd_initrd.d' && find . | cpio --create --format='newc' | gzip -c > "../$(@F)"
 
-$(netbootcd_dir)/lib/modules/%: $(tinycore_dir)/lib/modules/%
-	cp -r '$<' '$@'
-
 $(netbootcd_dir)/usr/bin/@mbd_command@: script/@mbd_command@
-	sed -ne '$$ {/sudo \S\+$$/ !q 1}' $(netbootcd_dir)/etc/skel/.profile
-	sed -ie '$$ {s_netboot$$_@mbd_command@_}' $(netbootcd_dir)/etc/skel/.profile
+	grep -q 'startx||netboot' $(netbootcd_dir)/etc/skel/.profile
+	sed -ie 's/startx||netboot/@mbd_command@||@mbd_command@/' $(netbootcd_dir)/etc/skel/.profile
 	cp '$<' '$@'
 	chmod +x '$@'
 
@@ -90,10 +85,11 @@ build/sed: data/sed
 build/mbd_initrd.d: $(netbootcd_dir)
 	! [ -d '$@' ] || rm -rf './$@'
 	mkdir -p '$@@mbd_dir@'
-	cp -rp "$(tinycore_dir)/dev" '$@@mbd_dir@/dev'
+	cp -rp "$(netbootcd_dir)/dev" '$@@mbd_dir@/dev'
+	mknod '$@@mbd_dir@/dev/@loop_dev@' b 7 '@loop_number@'
 
 build/%.d: data/%
-	@[ "$$(id -u)" = "0" ] || { echo 'Need root privileges' || false; }
+	@[ "$$(id -u)" = "0" ] || { echo 'Need root privileges'; false; }
 	! [ -d './$@.tmp' ] || rm -rf './$@.tmp'
 	mkdir -p './$@.tmp'
 	cd './$@.tmp' && cat '../../data/$*' | gzip -cd | cpio -id --no-absolute-filenames
