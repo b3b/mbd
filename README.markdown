@@ -38,6 +38,9 @@ Run _configure_ with the _target_device_ environment variable set to partition d
 
 FAT32 partitions is only supported (currently)
 
+### Additional options
+* isolinux_dir="DIR" - install to _DIR_ directory on USB flash drive. _DIR_ is "isolinux" by default
+
 ## Build
 On build stage, script will download NetbootCD and Tiny Core Linux live CDs; download and build GNU sedstream editor. Run
 
@@ -49,7 +52,7 @@ Need root privileges. Script will ask for confirmation, before boot loader (Sysl
     make install
 
 ## Use
-Put LIVE CDs (*.iso) images into the "isolinux/iso" directory on your USB flash drive. Example, if MP is flash USB drive mount point:
+Put LIVE CDs (*.iso) into the images directory ("isolinux/iso" by default) on your USB flash drive. Example, if MP is flash USB drive mount point:
 
     cp my-cool-live-cds/*.iso MP/isolinux/iso/
     mkdir MP/isolinux/iso/Debian
