@@ -39,7 +39,7 @@ Run _configure_ with the _target_device_ environment variable set to partition d
 FAT32 partitions is only supported (currently)
 
 ### Additional options
-* isolinux_dir="DIR" - install to _DIR_ directory on USB flash drive. _DIR_ is "isolinux" by default
+* isolinux\_dir="DIR" - install to _DIR_ directory on USB flash drive. _DIR_ is "isolinux" by default
 
 ## Build
 On build stage, script will download NetbootCD and Tiny Core Linux live CDs; download and build GNU sedstream editor. Run
