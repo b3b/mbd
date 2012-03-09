@@ -41,7 +41,7 @@ Run _configure_ with the _target_device_ environment variable set to partition d
 * --without-bootloader - do not install Syslinux bootloader on the device. Use this option to preserve existent bootloader. Need this option if target filesystem is not FAT32
 * mbd\_label="LABEL" - set filesystem label to _LABEL_, "MBOOTDISK" by default
 
-If _without-bootloader_ option is used, it is necessary to set target filesystem label to be the same as _mbd\_label_ value. Label can be set with the mlabel command (for FAT32), e2label command (for ext2/ext3/ext4).
+If _without-bootloader_ option is used, it is necessary to set target filesystem label to be the same as _mbd\_label_ value. Label can be set with the _mlabel_ command (for FAT32), _e2label_ command (for ext2/ext3/ext4).
 
 ## Build
 On build stage, script will download NetbootCD and Tiny Core Linux live CDs; download and build GNU sedstream editor. Run
@@ -72,9 +72,9 @@ Add desktop link to Live CD desktop. Run configure with the _desktop_link_ envir
 
     ./configure target_device=/dev/PARTITION desktop_link='http://xn--c1apc3a.xn--p1ai/'
 
-Boot Live CD from running system. Example, if MP is flash USB drive mount point:
+Boot Live CD from running system (if system has _kexec_ support enabled, and _dialog_ program installed). Example, if MP is flash USB drive mount point:
 
-    cd MP/isoinux
+    cd MP/isolinux
     mkdir /tmp/mbd
     sh mbd_menu -t /tmp/mbd
 
