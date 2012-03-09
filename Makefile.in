@@ -57,8 +57,9 @@ build/mbd_initrd.gz: build/mbd_initrd.d $(initrd_scripts)
 	cd 'build/mbd_initrd.d' && find . | cpio --create --format='newc' | gzip -c > "../$(@F)"
 
 $(netbootcd_dir)/usr/bin/@mbd_command@: script/@mbd_command@
-	grep -q 'startx||netboot' $(netbootcd_dir)/etc/skel/.profile
-	sed -ie 's/startx||netboot/@mbd_command@||@mbd_command@/' $(netbootcd_dir)/etc/skel/.profile
+	grep -q 'startx||netboot' $(netbootcd_dir)/etc/skel/.profile && \
+	sed -ie 's/startx||netboot/@mbd_command@||@mbd_command@/' $(netbootcd_dir)/etc/skel/.profile || \
+	grep -q '@mbd_command@||@mbd_command@' $(netbootcd_dir)/etc/skel/.profile
 	cp '$<' '$@'
 	chmod +x '$@'
 
