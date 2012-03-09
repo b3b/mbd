@@ -1,13 +1,14 @@
 AC_INIT([mbd], [0.0])
 
 AC_DEFUN(program_exist, [[program_exist]]_$1)
-m4_foreach([pname], [[tar], [cpio], [readlink], [install], [syslinux], [mlabel]],
-[
+AC_DEFUN(check_progs,[m4_foreach([pname], [$1],[
         AC_CHECK_PROG(program_exist(pname), [pname], [pname], [no])
         if test "${program_exist(pname)}" = "no" ; then
            AC_MSG_ERROR(Cannot find pname)
         fi
-])
+])])
+
+check_progs([tar, cpio, readlink, install])
 
 AC_CHECK_PROGS([downloader], [wget curl], [no]) 
 if test x_$downloader = x_no; then
@@ -16,21 +17,10 @@ else
         if test x_${downloader} == x_wget; then downloader='wget -O'; else downloader='curl -o'; fi
 fi
 
-m4_foreach([mbrfile], [[/usr/lib/syslinux/mbr.bin], [/usr/share/syslinux/mbr.bin]],
-[
-        AC_CHECK_FILE([mbrfile], [syslinux_mbr_file=mbrfile])
-        $as_unset ac_cv_file_mbrfile
-])
-
-if test x_$syslinux_mbr_file = "x_"; then
-   AC_MSG_ERROR(Cannot find syslinux "mbr.bin" file)
-fi
-
 AC_DEFUN([_magic_number], [2128506])
 AC_DEFUN([_loop_number], [16])
 AC_SUBST([mbd_verbose], ['Multi Boot Disk Test, AC_PACKAGE_VERSION'])
 AC_SUBST([magic], [_magic_number])
-AC_SUBST([mbd_label], ['MBOOTDISK'])
 AC_SUBST([mbd_dir], ['/mbd'])
 AC_SUBST([syslinux_mbr_file])
 AC_SUBST([loop_number], [_loop_number])
@@ -44,6 +34,25 @@ AC_ARG_VAR([target_device], [target partition device file (like "/dev/some-devic
 if test x_"${target_device}" = "x_"; then 
    AC_MSG_ERROR([No target device specified, run like "./configure target_device=/dev/some-device"])
 fi
+
+AC_ARG_VAR([mbd_label], [filesystem label (default is "MBOOTDISK")])
+if test x_"${mbd_label}" = "x_"; then 
+   AC_SUBST([mbd_label], ['MBOOTDISK'])
+fi
+
+AC_ARG_WITH(bootloader, AS_HELP_STRING([--without-bootloader], [do not install Syslinux bootloader on the device]), [bootloader=no], [bootloader=yes])
+
+if test x_"${bootloader}" = "x_yes"; then
+   check_progs([syslinux, mlabel])
+   m4_foreach([mbrfile], [[/usr/lib/syslinux/mbr.bin], [/usr/share/syslinux/mbr.bin]],[
+        AC_CHECK_FILE([mbrfile], [syslinux_mbr_file=mbrfile])
+        $as_unset ac_cv_file_mbrfile
+   ])
+   if test x_$syslinux_mbr_file = "x_"; then
+      AC_MSG_ERROR(Cannot find Syslinux "mbr.bin" file)
+   fi
+   AC_SUBST([install_syslinux_on_dev], ['yes'])
+fi       
 
 AC_ARG_VAR([isolinux_dir], [installation directory on device (default is "isolinux")])
 if test x_"${isolinux_dir}" = "x_"; then 

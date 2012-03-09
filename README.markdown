@@ -13,8 +13,8 @@ Multiboot flash drive creation
 * [Tiny Core Linux](http://distro.ibiblio.org/tinycorelinux/)
 
 ## Boot process
-* Syslinux boots the NetbootCD image
-* user scramble through dialogs, and select an image to boot
+* Syslinux, or another bootloader, boots the NetbootCD image
+* User scramble through dialogs, and select an image to boot
 * kexec loads the kernel from the selected image, using _improved_ initrd with _improved_ cmdline
 * mbd takes control before the initrd /init, and performs distro specific preparations
 * initrd /init prepare root filesystem
@@ -36,10 +36,12 @@ Run _configure_ with the _target_device_ environment variable set to partition d
     
     ./configure target_device=/dev/PARTITION
 
-FAT32 partitions is only supported (currently)
-
 ### Additional options
 * isolinux\_dir="DIR" - install to _DIR_ directory on USB flash drive. _DIR_ is "isolinux" by default
+* --without-bootloader - do not install Syslinux bootloader on the device. Use this option to preserve existent bootloader. Need this option if target filesystem is not FAT32
+* mbd\_label="LABEL" - set filesystem label to _LABEL_, "MBOOTDISK" by default
+
+If _without-bootloader_ option is used, it is necessary to set target filesystem label to be the same as _mbd\_label_ value. Label can be set with the mlabel command (for FAT32), e2label command (for ext2/ext3/ext4).
 
 ## Build
 On build stage, script will download NetbootCD and Tiny Core Linux live CDs; download and build GNU sedstream editor. Run
@@ -47,7 +49,7 @@ On build stage, script will download NetbootCD and Tiny Core Linux live CDs; dow
     make
 
 ## Install
-Need root privileges. Script will ask for confirmation, before boot loader (Syslinux) install. Run
+Need root privileges. If option _without-bootloader_ is not set, script will install bootloader (Syslinux) on target device. Run
 
     make install
 
