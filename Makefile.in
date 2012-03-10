@@ -15,7 +15,7 @@ uninstall_list = $(standalone_scripts_list) syslinux.cfg ldlinux.sys vmlinuz ini
 all: $(downloads) build/sed
 	@echo 'Ready to install'
 
-install: mount_device $(install_dir)/@magic@ $(install_dir)/initrd.gz $(install_dir)/vmlinuz $(install_dir)/mbd_initrd.gz $(install_dir)/syslinux.cfg ${standalone_scripts}
+install: mount_device $(install_dir)/@magic@ $(install_dir)/initrd.gz $(install_dir)/vmlinuz $(install_dir)/mbd_initrd.gz $(install_dir)/syslinux.cfg ${standalone_scripts} notice
 	sync
 	umount mnt
 	@echo 'Installation complete'
@@ -40,6 +40,17 @@ $(install_dir)/@magic@:
 	[ x_"$$(blkid -o device -t LABEL='@mbd_label@' '@target_device@')" = "x_@target_device@" ] ||\
 	{ echo "Device (@target_device@) label needs to be '@mbd_label@'"; false; }
 	touch '$@'
+
+notice: force
+	[ x_"@install_syslinux_on_dev@" = "x_" ] && { \
+	printf "\n================\n"; \
+	printf "Bootloader is not installed. You need to create a "mbd" menu entry in the existent bootloader configuration.\n"; \
+	printf "======== Syslinux entry example\n"; \
+	printf "label MultiBootDrive\nkernel /@isolinux_dir@/vmlinuz\nappend initrd=/@isolinux_dir@/initrd.gz quiet text norestore\n"; \
+	printf "======== GRUB Legacy entry example\n"; \
+	printf "title MultiBootDrive\nkernel /@isolinux_dir@/vmlinuz quiet text norestore\ninitrd /@isolinux_dir@/initrd.gz\n"; \
+	printf "================\n\n"; \
+	} || true
 
 $(install_dir)/@mbd_menu@: script/@mbd_menu@
 	install -m500 '$<' '$@'
@@ -120,4 +131,4 @@ uninstall: mount_device
 	@echo 'Uninstalled'
 
 force: 
-.PHONY: all clean install need_root uninstall
+.PHONY: all clean install need_root uninstall notice

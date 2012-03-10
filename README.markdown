@@ -49,7 +49,9 @@ On build stage, script will download NetbootCD and Tiny Core Linux live CDs; dow
     make
 
 ## Install
-Need root privileges. If option _without-bootloader_ is not set, script will install bootloader (Syslinux) on target device. Run
+Need root privileges. Script will prepare and copy _mbd_ files to the target device.
+If option _without-bootloader_ is not set, script will install the bootloader (Syslinux) on the target device. Else, if option _without-bootloader_ is used, script will suggest examples of bootloaders menu entries.
+Run
 
     make install
 
