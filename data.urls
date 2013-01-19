@@ -1,3 +1,3 @@
 netbootcd http://downloads.tuxfamily.org/netbootcd/nbinit4.gz
 netbootcd_vmlinuz http://downloads.tuxfamily.org/netbootcd/kexec.bzI
-sed http://ftp.gnu.org/gnu/sed/sed-4.2.tar.bz2
+sed http://distro.ibiblio.org/tinycorelinux/4.x/x86/tcz/sed.tcz

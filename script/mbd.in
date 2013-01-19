@@ -39,6 +39,10 @@ _user="${SUDO_USER:-USER}"
 [ -f '@tmp_dir@/mnt/@isolinux_dir@/@magic@' ] || find_mount_mbd '@tmp_dir@/mnt'
 [ -f '@tmp_dir@/mnt/@isolinux_dir@/@magic@' ] || panic "Cannot mount \"@mbd_verbose@\" disk"
 
+sed_tcz='@tmp_dir@/mnt/@isolinux_dir@/sed.tcz'
+[ -f "${sed_tcz}" ] || panic "Cannot find \"sed\" package"
+sudo -u "${_user}" tce-load -i "${sed_tcz}" || panic "Cannot install \"sed\" package"
+
 choose=''
 while [ -z "${choose}" ];do
     show main_menu

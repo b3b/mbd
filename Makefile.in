@@ -10,12 +10,12 @@ standalone_scripts = $(foreach f, $(standalone_scripts_list), ${install_dir}/$(f
 scripts = $(foreach f, $(scripts_list), $(netbootcd_dir)/usr/bin/$(f))
 initrd_scripts_list = init before_switch_root
 initrd_scripts = $(foreach f, $(initrd_scripts_list), build/mbd_initrd.d@mbd_dir@/$(f))
-uninstall_list = $(standalone_scripts_list) syslinux.cfg ldlinux.sys vmlinuz initrd.gz mbd_initrd.gz @magic@
+uninstall_list = $(standalone_scripts_list) syslinux.cfg ldlinux.sys vmlinuz sed.tcz initrd.gz mbd_initrd.gz @magic@
 
-all: $(downloads) build/sed
+all: $(downloads)
 	@echo 'Ready to install'
 
-install: mount_device $(install_dir)/@magic@ $(install_dir)/initrd.gz $(install_dir)/vmlinuz $(install_dir)/mbd_initrd.gz $(install_dir)/syslinux.cfg ${standalone_scripts} notice
+install: mount_device $(install_dir)/@magic@ $(install_dir)/initrd.gz $(install_dir)/vmlinuz $(install_dir)/mbd_initrd.gz $(install_dir)/syslinux.cfg $(install_dir)/sed.tcz ${standalone_scripts} notice
 	sync
 	umount mnt
 	@echo 'Installation complete'
@@ -61,7 +61,7 @@ $(install_dir)/@mbd_process_iso@: script/@mbd_process_iso@
 $(install_dir)/%.gz: build/%.gz
 	cp '$<' '$@'
 
-build/initrd.gz: $(initrd_dirs) $(scripts) $(netbootcd_dir)/usr/bin/sed
+build/initrd.gz: $(initrd_dirs) $(scripts)
 	cd "$(netbootcd_dir)" && find . | cpio --create --format='newc' | gzip -c > "../$(@F)"
 
 build/mbd_initrd.gz: build/mbd_initrd.d $(initrd_scripts) 
@@ -74,10 +74,6 @@ $(netbootcd_dir)/usr/bin/@mbd_command@: script/@mbd_command@
 	cp '$<' '$@'
 	chmod +x '$@'
 
-$(netbootcd_dir)/usr/bin/sed: build/sed
-	cp '$<' '$@'
-	chmod +x '$@'
-
 $(netbootcd_dir)/usr/bin/%: script/%
 	cp '$<' '$@'
 	chmod +x '$@'
@@ -86,13 +82,6 @@ build/mbd_initrd.d@mbd_dir@/%: script/initrd/%
 	mkdir -p "$(@D)"
 	cp '$<' '$@'
 	chmod +x '$@'
-
-build/sed: data/sed
-	! [ -d '$@.d' ] || rm -rf './$@.d'
-	mkdir -p '$@.d'
-	tar -C '$@.d' -xjf '$<'
-	cd '$@.d/sed'-* && ./configure && make
-	cp '$@.d/sed'-*'/sed/sed' '$@'
 
 build/mbd_initrd.d: $(netbootcd_dir)
 	! [ -d '$@' ] || rm -rf './$@'
@@ -112,6 +101,9 @@ $(install_dir)/vmlinuz: data/netbootcd_vmlinuz
 	cp '$<' '$@'
 
 $(install_dir)/syslinux.cfg: syslinux.cfg
+	cp '$<' '$@'
+
+$(install_dir)/sed.tcz: data/sed
 	cp '$<' '$@'
 
 clean:
