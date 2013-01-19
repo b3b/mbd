@@ -107,9 +107,11 @@ iso_menu() {
 iso_dialog() {
     local image="${1}/${2}"
     local err; local cmd; local wdir
+    local user_cfg="${1}/${2%.[Ii][Ss][oO]}.cfg"
+    [ ! -f  "${user_cfg}" ] && user_cfg=""
     wdir="${tmp_dir}"$(readlink -f "${image}")
     [ -x './@mbd_process_iso@' ] && cmd='./@mbd_process_iso@' || cmd='@mbd_process_iso@'
-    err=$("${cmd}" "${wdir}" "${image}" 2>&1)
+    err=$("${cmd}" "${wdir}" "${image}" "${user_cfg}" 2>&1)
     if [ ! ${?} -eq 0 ] || [ ! -r "${wdir}/isolinux.cfg" ]; then
         panic "Error processing image. ${err}"
     fi

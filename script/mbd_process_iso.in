@@ -2,6 +2,7 @@
 
 wdir=${1}
 image=${2}
+user_cfg=${3}
 mp=''
 
 prepare_include_commands(){
@@ -78,14 +79,19 @@ else
 fi
 mp=$(readlink -f "${mp}")
 
-cfg=$(find_bootloader_cfg  "${mp}")
-[ -n "${cfg}" ] || panic 'Cannot find boot config'
-menu_dir="${cfg%/*}"
-if [ "${menu_dir}" = "${cfg}" ]; then
-    menu_dir=""
+if [ -f "${user_cfg}" ]; then
+    menu_dir=$(readlink -f "${mp}")
+    orig_cfg="${user_cfg}"
+else
+    cfg=$(find_bootloader_cfg  "${mp}")
+    [ -n "${cfg}" ] || panic 'Cannot find boot config'
+    menu_dir="${cfg%/*}"
+    if [ "${menu_dir}" = "${cfg}" ]; then
+        menu_dir=""
+    fi
+    orig_cfg="${mp}/${cfg}"
+    [ -f "${orig_cfg}" ] || panic 'Cannot find boot config'
 fi
-orig_cfg="${mp}/${cfg}"
-[ -r "${orig_cfg}" ] || panic 'Cannot find boot config'
 cp "${orig_cfg}" "${wdir}/cfg"
 chmod +w "${wdir}/cfg"
 
